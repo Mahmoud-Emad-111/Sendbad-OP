@@ -13,18 +13,28 @@ class ServiceRequest extends Model
         'user_id',
         'technician_id',
         'service_type',
+        'details', // JSON payload for dynamic fields
         'description',
         'scheduled_at',
         'address',
         'latitude',
         'longitude',
-        'status'
+        'status',
+        'rating',
+        'review_comment',
+        'completed_at',
+        'task_start_time',
+        'task_end_time'
     ];
 
     protected $casts = [
         'scheduled_at' => 'datetime',
+        'completed_at' => 'datetime',
+        'task_start_time' => 'datetime',
+        'task_end_time' => 'datetime',
         'latitude' => 'float',
         'longitude' => 'float',
+        'details' => 'array',
     ];
 
     public function user()
@@ -39,6 +49,6 @@ class ServiceRequest extends Model
 
     public function attachments()
     {
-        return $this->hasMany(RequestAttachment::class);
+        return $this->morphMany(RequestAttachment::class, 'attachable');
     }
 }

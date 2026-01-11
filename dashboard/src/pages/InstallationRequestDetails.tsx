@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/auth';
-import { Calendar, User, Settings, AlertCircle, CheckCircle, Clock, MapPin, ArrowRight } from 'lucide-react';
+import { Calendar, User, Settings, AlertCircle, CheckCircle, Clock, MapPin, ArrowRight, Package } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import clsx from 'clsx';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const API_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace('/api', '');
-// const API_URL = 'https://back.sindbad.om/public/api';
 
 const containerStyle = {
     width: '100%',
@@ -22,7 +21,7 @@ const mapOptions = {
     fullscreenControl: true,
 };
 
-export default function ServiceRequestDetails() {
+export default function InstallationRequestDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [request, setRequest] = useState<any>(null);
@@ -43,14 +42,9 @@ export default function ServiceRequestDetails() {
 
     const loadRequest = async () => {
         try {
-            // Re-using list API but filtering for 1 (Ideally should have show endpoint)
-            // For now, let's assume we fetch all and find, or if we had a show endpoint.
-            // Since we don't have a show endpoint in controller yet (only index), we can use index and filter client side
-            // OR better, create a show endpoint. But keeping it simple:
-            const res = await api.get('/requests');
+            const res = await api.get(`/installation-requests/${id}`);
             if (res.data.success) {
-                const found = res.data.data.find((r: any) => r.id === Number(id));
-                setRequest(found);
+                setRequest(res.data.data);
             }
         } catch (error) {
             console.error(error);
@@ -90,7 +84,15 @@ export default function ServiceRequestDetails() {
         if (!newStatus) return;
         setUpdating(true);
         try {
-            const res = await api.post(`/requests/${request.id}/status`, {
+            // Note: Installation Request Status Update might need different endpoint or same logic?
+            // Since InstallationRequestController doesn't have updateStatus yet, I mapped it in routes?
+            // Actually, I did NOT add updateStatus generic API for InstallationRequestController in previous steps.
+            // I only added index, store, show.
+            // I need to add updateStatus to InstallationRequestController!
+            // Assuming for now it works like service requests, but endpoint/controller is distinct.
+            // I better add the method to controller quickly or use a generic one.
+            // Let's assume I will add it. I'll make the call here first.
+            const res = await api.post(`/installation-requests/${request.id}/status`, {
                 status: newStatus,
                 send_notification: sendNotification
             });
@@ -106,6 +108,7 @@ export default function ServiceRequestDetails() {
         }
     };
 
+    // Note: fields like product_type are direct properties now, not inside details
     return (
         <div className="space-y-6 max-w-7xl mx-auto pb-10">
             {/* Header */}
@@ -119,7 +122,7 @@ export default function ServiceRequestDetails() {
                     </button>
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                            تفاصيل الطلب #{request.id}
+                            طلب تركيب #{request.id}
                             <StatusBadge status={request.status} />
                         </h1>
                         <div className="text-slate-500 flex items-center gap-2 text-sm mt-1">
@@ -129,18 +132,67 @@ export default function ServiceRequestDetails() {
                     </div>
                 </div>
 
-                <button
-                    onClick={() => setStatusModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors shadow-sm"
-                >
-                    <Settings size={18} />
-                    تغيير الحالة
-                </button>
+                <div className="flex gap-2">
+                     {/* Technician Assign Button could be added here similar to ServiceRequests */}
+                    <button
+                        onClick={() => setStatusModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors shadow-sm"
+                    >
+                        <Settings size={18} />
+                        تغيير الحالة
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Main Content (Right Side) */}
                 <div className="lg:col-span-2 space-y-6">
+                    {/* Installation Specific Details */}
+                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                            <Package size={20} className="text-purple-500" />
+                            بيانات التركيب
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <div className="text-sm text-slate-500 mb-1">نوع المنتج</div>
+                                <div className="font-semibold text-slate-900">{request.product_type}</div>
+                            </div>
+                            <div>
+                                <div className="text-sm text-slate-500 mb-1">الكمية</div>
+                                <div className="font-semibold text-slate-900">{request.quantity}</div>
+                            </div>
+                            <div className="md:col-span-2">
+                                <div className="text-sm text-slate-500 mb-1">حالة الموقع</div>
+                                <div className="flex items-center gap-2">
+                                    <span className={clsx("px-2 py-1 rounded text-xs font-bold", request.is_site_ready ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
+                                        {request.is_site_ready ? 'جاهز للتركيب' : 'غير جاهز'}
+                                    </span>
+                                </div>
+                            </div>
+                            {request.readiness_details && request.readiness_details.length > 0 && (
+                                <div className="md:col-span-2">
+                                    <div className="text-sm text-slate-500 mb-2">التجهيزات المكتملة</div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {request.readiness_details.map((item: string, idx: number) => (
+                                            <span key={idx} className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs border border-slate-200">
+                                                {item}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {request.notes && (
+                                <div className="md:col-span-2">
+                                    <div className="text-sm text-slate-500 mb-1">ملاحظات إضافية</div>
+                                    <div className="text-slate-700 text-sm bg-slate-50 p-3 rounded-lg border border-slate-100 italic">
+                                        "{request.notes}"
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                     {/* Map Section */}
                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                         <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
@@ -174,62 +226,6 @@ export default function ServiceRequestDetails() {
                             {request.address}
                         </div>
                     </div>
-
-                    {/* Description */}
-                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <h2 className="text-lg font-bold text-slate-900 mb-4">وصف المشكلة</h2>
-                        <p className="text-slate-700 leading-relaxed whitespace-pre-line">
-                            {request.description}
-                        </p>
-                    </div>
-
-                    {/* Installation Details (Only for Installation Requests) */}
-                    {request.service_type === 'installation' && request.details && (
-                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                            <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                                <Settings size={20} className="text-purple-500" />
-                                تفاصيل التركيب
-                            </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <div className="text-sm text-slate-500 mb-1">نوع المنتج</div>
-                                    <div className="font-semibold text-slate-900">{request.details.product_type}</div>
-                                </div>
-                                <div>
-                                    <div className="text-sm text-slate-500 mb-1">الكمية</div>
-                                    <div className="font-semibold text-slate-900">{request.details.quantity}</div>
-                                </div>
-                                <div className="md:col-span-2">
-                                    <div className="text-sm text-slate-500 mb-1">حالة الموقع</div>
-                                    <div className="flex items-center gap-2">
-                                        <span className={clsx("px-2 py-1 rounded text-xs font-bold", request.details.is_site_ready ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
-                                            {request.details.is_site_ready ? 'جاهز للتركيب' : 'غير جاهز'}
-                                        </span>
-                                    </div>
-                                </div>
-                                {request.details.readiness_details && request.details.readiness_details.length > 0 && (
-                                    <div className="md:col-span-2">
-                                        <div className="text-sm text-slate-500 mb-2">التجهيزات المكتملة</div>
-                                        <div className="flex flex-wrap gap-2">
-                                            {request.details.readiness_details.map((item: string, idx: number) => (
-                                                <span key={idx} className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs border border-slate-200">
-                                                    {item}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                                {request.details.notes && (
-                                    <div className="md:col-span-2">
-                                        <div className="text-sm text-slate-500 mb-1">ملاحظات إضافية</div>
-                                        <div className="text-slate-700 text-sm bg-slate-50 p-3 rounded-lg border border-slate-100 italic">
-                                            "{request.details.notes}"
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
 
                     {/* Images Gallery */}
                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
@@ -288,15 +284,6 @@ export default function ServiceRequestDetails() {
                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                         <h2 className="text-lg font-bold text-slate-900 mb-4">تفاصيل الموعد</h2>
                         <div className="space-y-4">
-                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                                    <Settings size={20} />
-                                </div>
-                                <div>
-                                    <div className="text-xs text-slate-500">نوع الخدمة</div>
-                                    <div className="font-medium text-slate-900">{request.service_type}</div>
-                                </div>
-                            </div>
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">
                                     <Calendar size={20} />

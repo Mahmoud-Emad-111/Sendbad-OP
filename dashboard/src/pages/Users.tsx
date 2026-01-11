@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { adminService } from '../services/auth';
 import { Users as UsersIcon, Search } from 'lucide-react';
 import clsx from 'clsx';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function Users() {
   const [users, setUsers] = useState<any[]>([]);
@@ -97,7 +98,7 @@ export default function Users() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                     {loading ? (
-                        <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">جاري التحميل...</td></tr>
+                        <tr><td colSpan={5}><LoadingSpinner /></td></tr>
                     ) : filteredUsers.length === 0 ? (
                         <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">لا يوجد مستخدمين</td></tr>
                     ) : (
@@ -111,6 +112,14 @@ export default function Users() {
                                         <span className={clsx("w-1.5 h-1.5 rounded-full", user.is_active ? "bg-green-500" : "bg-amber-500")}></span>
                                         {user.is_active ? 'نشط' : 'غير نشط'}
                                     </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <button
+                                        onClick={() => window.location.href = `/dashboard/users/${user.id}`}
+                                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                    >
+                                        عرض التفاصيل
+                                    </button>
                                 </td>
                                 <td className="px-6 py-4 text-slate-500 text-sm">
                                     {new Date(user.created_at).toLocaleDateString('ar-EG')}

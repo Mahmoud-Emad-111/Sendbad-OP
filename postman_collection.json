@@ -1,8 +1,8 @@
 {
 	"info": {
-		"_postman_id": "b5a9b9b0-1b1b-4b1b-8b1b-1b1b1b1b1b1b",
-		"name": "Service Management System API",
-		"description": "API Collection for Sindbad Service Management System (Admin Dashboard & Mobile App)",
+		"_postman_id": "sindbad-api-collection",
+		"name": "Sindbad Oprition System",
+		"description": "Postman Collection for Sindbad Mobile Application",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -10,109 +10,10 @@
 			"name": "Auth",
 			"item": [
 				{
-					"name": "Login",
+					"name": "Validate Phone",
 					"request": {
 						"method": "POST",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"phone\": \"96812345678\",\n    \"password\": \"password\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/auth/login",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"login"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get User Profile",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/user",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"user"
-							]
-						}
-					},
-					"response": []
-				},
-                {
-					"name": "Full Profile (with Stats)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/auth/profile",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"profile"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Validate Phone (Odoo)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
+						"header": [],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n    \"phone\": \"96812345678\"\n}",
@@ -123,33 +24,20 @@
 							}
 						},
 						"url": {
-							"raw": "{{base_url}}/api/auth/validate-phone",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"validate-phone"
-							]
+							"raw": "{{base_url}}/auth/validate-phone",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "validate-phone"]
 						}
-					},
-					"response": []
+					}
 				},
-                {
-					"name": "Activate Account",
+				{
+					"name": "Login",
 					"request": {
 						"method": "POST",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
+						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"phone\": \"96812345678\",\n    \"otp\": \"1234\",\n    \"password\": \"password\",\n    \"password_confirmation\": \"password\"\n}",
+							"raw": "{\n    \"phone\": \"96812345678\",\n    \"password\": \"password\",\n    \"device_name\": \"Postman\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -157,140 +45,29 @@
 							}
 						},
 						"url": {
-							"raw": "{{base_url}}/api/auth/activate",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"activate"
-							]
+							"raw": "{{base_url}}/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "login"]
 						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Admin",
-			"item": [
+					}
+				},
 				{
-					"name": "Get Users",
+					"name": "Get Profile",
 					"request": {
 						"method": "GET",
 						"header": [
 							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
 								"key": "Authorization",
 								"value": "Bearer {{token}}",
 								"type": "text"
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/admin/users?role=technician",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"admin",
-								"users"
-							],
-							"query": [
-								{
-									"key": "role",
-									"value": "technician",
-									"description": "Optional: admin, technician, customer"
-								}
-							]
+							"raw": "{{base_url}}/profile",
+							"host": ["{{base_url}}"],
+							"path": ["profile"]
 						}
-					},
-					"response": []
-				},
-				{
-					"name": "Create Technician",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"name\": \"Technician 1\",\n    \"phone\": \"96899999999\",\n    \"password\": \"password\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/admin/technicians",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"admin",
-								"technicians"
-							]
-						}
-					},
-					"response": []
-				},
-                {
-					"name": "Assign Request",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"technician_id\": 1\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/admin/requests/1/assign",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"admin",
-								"requests",
-								"1",
-								"assign"
-							]
-						}
-					},
-					"response": []
+					}
 				}
 			]
 		},
@@ -298,15 +75,10 @@
 			"name": "Service Requests",
 			"item": [
 				{
-					"name": "List Requests",
+					"name": "List All Requests",
 					"request": {
 						"method": "GET",
 						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							},
 							{
 								"key": "Authorization",
 								"value": "Bearer {{token}}",
@@ -314,28 +86,17 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/requests",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"requests"
-							]
+							"raw": "{{base_url}}/requests",
+							"host": ["{{base_url}}"],
+							"path": ["requests"]
 						}
-					},
-					"response": []
+					}
 				},
 				{
-					"name": "Create Request (Customer)",
+					"name": "Create Request",
 					"request": {
 						"method": "POST",
 						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							},
 							{
 								"key": "Authorization",
 								"value": "Bearer {{token}}",
@@ -345,56 +106,24 @@
 						"body": {
 							"mode": "formdata",
 							"formdata": [
-								{
-									"key": "service_type",
-									"value": "AC Maintenance",
-									"type": "text"
-								},
-								{
-									"key": "description",
-									"value": "AC leaked water",
-									"type": "text"
-								},
-								{
-									"key": "address",
-									"value": "Muscat, Seeb",
-									"type": "text"
-								},
-								{
-									"key": "scheduled_at",
-									"value": "2024-12-30 10:00:00",
-									"type": "text"
-								},
-                                {
-									"key": "images[]",
-									"type": "file",
-                                    "src": []
-								}
+								{ "key": "service_type", "value": "installation", "type": "text" },
+								{ "key": "description", "value": "Need AC installation", "type": "text" },
+								{ "key": "address", "value": "Muscat, Seeb", "type": "text" },
+								{ "key": "scheduled_at", "value": "2025-02-20 10:00:00", "type": "text" }
 							]
 						},
 						"url": {
-							"raw": "{{base_url}}/api/requests",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"requests"
-							]
+							"raw": "{{base_url}}/requests",
+							"host": ["{{base_url}}"],
+							"path": ["requests"]
 						}
-					},
-					"response": []
+					}
 				},
 				{
-					"name": "Update Status (Technician)",
+					"name": "Rate Request",
 					"request": {
 						"method": "POST",
 						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json",
-								"type": "text"
-							},
 							{
 								"key": "Authorization",
 								"value": "Bearer {{token}}",
@@ -403,27 +132,45 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"status\": \"on_way\"\n}",
+							"raw": "{\n    \"rating\": 5,\n    \"review_comment\": \"Excellent!\"\n}",
 							"options": {
-								"raw": {
-									"language": "json"
-								}
+								"raw": { "language": "json" }
 							}
 						},
 						"url": {
-							"raw": "{{base_url}}/api/requests/1/status",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"requests",
-								"1",
-								"status"
-							]
+							"raw": "{{base_url}}/requests/1/rate",
+							"host": ["{{base_url}}"],
+							"path": ["requests", "1", "rate"]
 						}
-					},
-					"response": []
+					}
+				}
+			]
+		},
+		{
+			"name": "Technician",
+			"item": [
+				{
+					"name": "Update Status",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"on_way\",\n    \"send_notification\": true\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{base_url}}/requests/1/status",
+							"host": ["{{base_url}}"],
+							"path": ["requests", "1", "status"]
+						}
+					}
 				}
 			]
 		}
@@ -431,13 +178,11 @@
 	"variable": [
 		{
 			"key": "base_url",
-			"value": "http://127.0.0.1:8000",
-			"type": "string"
+			"value": "http://localhost:8000/api"
 		},
 		{
 			"key": "token",
-			"value": "",
-			"type": "string"
+			"value": ""
 		}
 	]
 }

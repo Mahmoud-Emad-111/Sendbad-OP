@@ -29,13 +29,20 @@ class AuthController extends Controller
         try {
             $customer = $this->authService->validateOdooUser($request->phone);
 
+            // Cache data for activation step (expires in 10 minutes)
+            \Illuminate\Support\Facades\Cache::put('auth_otp_' . $request->phone, [
+                'name' => $customer['name'],
+                'odoo_id' => $customer['id'],
+                'phone' => $customer['phone']
+            ], 600);
+
             return response()->json([
                 'success' => true,
                 'message' => 'User found in Odoo.',
                 'data' => [
                     'name' => $customer['name'],
-                    'phone' => $customer['phone'],
-                    'odoo_id' => $customer['id']
+                    'phone' => $customer['phone']
+                    // Removed odoo_id return as it's now internal
                 ]
             ]);
 
@@ -56,27 +63,35 @@ class AuthController extends Controller
         $request->validate([
             'phone' => 'required|string',
             'password' => 'required|string|min:6|confirmed',
-            'odoo_id' => 'required|integer',
-            'name' => 'required|string', // Confirm name from Step 1
+            // 'odoo_id' & 'name' removed from validation
         ]);
 
         try {
-            // Verify Logic again (optional but recommended for security) or trust the params
-            // For now, we trust the flow, but AuthService handles duplicate checks.
+            $cachedData = \Illuminate\Support\Facades\Cache::get('auth_otp_' . $request->phone);
+
+            if (!$cachedData) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'انتهت صلاحية الجلسة أو رقم الهاتف غير صحيح. يرجى إعادة التحقق.'
+                ], 400);
+            }
 
             $token = $this->authService->activateUser(
                 $request->phone,
                 $request->password,
-                $request->odoo_id,
-                $request->name
+                $cachedData['odoo_id'],
+                $cachedData['name']
             );
+
+            // Clear cache after success
+            \Illuminate\Support\Facades\Cache::forget('auth_otp_' . $request->phone);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Account activated successfully.',
                 'token' => $token,
                 'user' => [
-                    'name' => $request->name,
+                    'name' => $cachedData['name'],
                     'phone' => $request->phone,
                     'is_active' => true
                 ]

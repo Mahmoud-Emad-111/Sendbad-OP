@@ -1,26 +1,76 @@
 import { useEffect, useState } from 'react';
 import api from '../services/auth';
-import { Calendar, User, Settings, AlertCircle, CheckCircle, Clock, Eye, X } from 'lucide-react';
+import { Calendar, User, Settings, AlertCircle, CheckCircle, Clock, Eye, X, Filter, Search as SearchIcon, RotateCcw } from 'lucide-react';
 import clsx from 'clsx';
+import LoadingSpinner from '../components/LoadingSpinner';
+// If lodash is not installed, I will use a simple timeout approach in useEffect.
 
 export default function ServiceRequests() {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [technicians, setTechnicians] = useState<any[]>([]);
+
+  // Filters State
+  const [filters, setFilters] = useState({
+      search: '',
+      status: 'all',
+      technician_id: '',
+      service_type: 'all',
+      date_from: '',
+      date_to: ''
+  });
+
   const [assignModal, setAssignModal] = useState<{show: boolean, requestId: number | null}>({show: false, requestId: null});
   const [viewModal, setViewModal] = useState<{show: boolean, request: any | null}>({show: false, request: null});
   const [selectedTech, setSelectedTech] = useState('');
+  const [taskTimes, setTaskTimes] = useState({ start: '', end: '' });
+
+  // ... inside component ...
+  const [userRole, setUserRole] = useState<string>('');
 
   useEffect(() => {
-    loadRequests();
-    loadTechnicians();
+    // Get user from local storage
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+        const user = JSON.parse(userStr);
+        setUserRole(user.role);
+    }
   }, []);
 
+  useEffect(() => {
+    if (userRole === 'admin') {
+        loadTechnicians();
+    }
+  }, [userRole]);
+
+  // ... (rest of code)
+
+
+  // Debounced load for search
+  useEffect(() => {
+      const timer = setTimeout(() => {
+          loadRequests();
+      }, 500);
+      return () => clearTimeout(timer);
+  }, [filters]);
+
   const loadRequests = async () => {
+    setLoading(true);
     try {
-      const res = await api.get('/requests');
+      // Build query string
+      const params = new URLSearchParams();
+      if (filters.search) params.append('search', filters.search);
+      if (filters.status !== 'all') params.append('status', filters.status);
+      if (filters.technician_id) params.append('technician_id', filters.technician_id);
+      if (filters.service_type !== 'all') params.append('service_type', filters.service_type);
+      if (filters.date_from) params.append('date_from', filters.date_from);
+      if (filters.date_to) params.append('date_to', filters.date_to);
+
+      const res = await api.get(`/requests?${params.toString()}`);
       if (res.data.success) {
-        setRequests(res.data.data);
+        // Filter out installation requests client-side to keep this page strictly for Maintenance/Repair
+        const maintenanceRequests = res.data.data.filter((r: any) => r.service_type !== 'installation');
+        setRequests(maintenanceRequests);
       }
     } catch (error) {
       console.error(error);
@@ -29,15 +79,31 @@ export default function ServiceRequests() {
     }
   };
 
+  const handleFilterChange = (key: string, value: any) => {
+      setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const clearFilters = () => {
+      setFilters({
+          search: '',
+          status: 'all',
+          technician_id: '',
+          service_type: 'all',
+          date_from: '',
+          date_to: ''
+      });
+  };
+
+  // ... rest of loadTechnicians ...
   const loadTechnicians = async () => {
-    try {
-        const res = await api.get('/admin/users?role=technician');
-        if (res.data.success) {
-            setTechnicians(res.data.data);
+        try {
+            const res = await api.get('/admin/users?role=technician');
+            if (res.data.success) {
+                setTechnicians(res.data.data);
+            }
+        } catch (error) {
+            console.error("Failed to load techs", error);
         }
-    } catch (error) {
-        console.error("Failed to load techs", error);
-    }
   };
 
   const handleAssign = async () => {
@@ -45,7 +111,9 @@ export default function ServiceRequests() {
 
     try {
         const res = await api.post(`/admin/requests/${assignModal.requestId}/assign`, {
-            technician_id: selectedTech
+            technician_id: selectedTech,
+            task_start_time: taskTimes.start || null,
+            task_end_time: taskTimes.end || null
         });
         if (res.data.success) {
             alert('تم إسناد الطلب بنجاح');
@@ -81,11 +149,114 @@ export default function ServiceRequests() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">طلبات الصيانة</h1>
-          <p className="text-slate-500">متابعة وإدارة طلبات العملاء</p>
+          <p className="text-slate-500">متابعة وإدارة طلبات العملاء (صيانة، إصلاح، فحص)</p>
         </div>
+        <button
+            onClick={() => window.location.href = "/dashboard/requests/new"}
+            className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl transition-colors font-medium shadow-sm hover:shadow-md"
+        >
+            <span>+</span>
+            طلب صيانة جديد
+        </button>
+      </div>
+
+      {/* Filter Toolbar */}
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
+          <div className="flex items-center gap-2 text-slate-700 font-semibold border-b border-slate-100 pb-2 mb-2">
+              <Filter size={20} className="text-blue-600" />
+              تصفية وبحث متقدم
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Search */}
+              <div className="relative">
+                  <SearchIcon className="absolute right-3 top-2.5 text-slate-400" size={18} />
+                  <input
+                      type="text"
+                      placeholder="بحث (رقم الطلب، اسم العميل، الهاتف)..."
+                      className="w-full pr-10 pl-4 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      value={filters.search}
+                      onChange={(e) => handleFilterChange('search', e.target.value)}
+                  />
+              </div>
+
+              {/* Status Filter */}
+              <select
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                  value={filters.status}
+                  onChange={(e) => handleFilterChange('status', e.target.value)}
+              >
+                  <option value="all">كل الحالات</option>
+                  <option value="pending">قيد الانتظار</option>
+                  <option value="assigned">تم الإسناد</option>
+                  <option value="on_way">في الطريق</option>
+                  <option value="in_progress">جاري العمل</option>
+                  <option value="completed">مكتمل</option>
+                  <option value="canceled">ملغي</option>
+              </select>
+
+              {/* Technician Filter */}
+              <select
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                  value={filters.technician_id}
+                  onChange={(e) => handleFilterChange('technician_id', e.target.value)}
+              >
+                  <option value="">كل الفنيين</option>
+                  {technicians.map(tech => (
+                      <option key={tech.id} value={tech.id}>{tech.name}</option>
+                  ))}
+              </select>
+
+              {/* Service Type Filter */}
+              <select
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                  value={filters.service_type}
+                  onChange={(e) => handleFilterChange('service_type', e.target.value)}
+              >
+                  <option value="all">كل الخدمات</option>
+                  <option value="maintenance">صيانة دورية</option>
+                  <option value="repair">إصلاح عاجل</option>
+                  <option value="inspection">فحص فني</option>
+              </select>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+               {/* Date From */}
+               <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-500 w-16">من:</span>
+                  <input
+                      type="date"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      value={filters.date_from}
+                      onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                  />
+               </div>
+
+               {/* Date To */}
+               <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-500 w-16">إلى:</span>
+                  <input
+                      type="date"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      value={filters.date_to}
+                      onChange={(e) => handleFilterChange('date_to', e.target.value)}
+                  />
+               </div>
+
+               {/* Clear Buttons */}
+               <div className="lg:col-span-2 flex justify-end">
+                    <button
+                        onClick={clearFilters}
+                        className="flex items-center gap-2 text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+                    >
+                        <RotateCcw size={16} />
+                        إعادة تعيين الفلاتر
+                    </button>
+               </div>
+          </div>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
@@ -105,7 +276,7 @@ export default function ServiceRequests() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                     {loading ? (
-                        <tr><td colSpan={8} className="px-6 py-8 text-center text-slate-500">جاري التحميل...</td></tr>
+                        <tr><td colSpan={8}><LoadingSpinner /></td></tr>
                     ) : requests.length === 0 ? (
                         <tr><td colSpan={8} className="px-6 py-8 text-center text-slate-500">لا يوجد طلبات حالياً</td></tr>
                     ) : (
@@ -143,7 +314,7 @@ export default function ServiceRequests() {
                                     >
                                         <Eye size={18} />
                                     </button>
-                                    {req.status === 'pending' && (
+                                    {req.status === 'pending' && userRole === 'admin' && (
                                         <button
                                             onClick={() => setAssignModal({show: true, requestId: req.id})}
                                             className="text-xs bg-slate-900 text-white px-3 py-1.5 rounded hover:bg-slate-800 transition-colors"
@@ -303,6 +474,29 @@ export default function ServiceRequests() {
                                 <option key={tech.id} value={tech.id}>{tech.name} ({tech.phone})</option>
                             ))}
                         </select>
+                    </div>
+
+
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">وقت البدء (اختياري)</label>
+                            <input
+                                type="datetime-local"
+                                className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                value={taskTimes.start}
+                                onChange={e => setTaskTimes({...taskTimes, start: e.target.value})}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">وقت التسليم المتوقع</label>
+                            <input
+                                type="datetime-local"
+                                className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                value={taskTimes.end}
+                                onChange={e => setTaskTimes({...taskTimes, end: e.target.value})}
+                            />
+                        </div>
                     </div>
 
                     <div className="flex gap-3 mt-6 pt-4 border-t border-slate-100">

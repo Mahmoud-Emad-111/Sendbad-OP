@@ -15,9 +15,22 @@ interface OdooIntegrationInterface
 
     /**
      * Get customer orders and financial status from Odoo.
-     *
-     * @param int $odooId
-     * @return array
      */
-    public function getCustomerOrders(int $odooId): array;
+    public function getCustomerOrders(int $odooId, ?string $phone = null, ?string $name = null): array;
+
+    /**
+     * Check if a specific task exists for the user.
+     * Task Name: "The product is complete and ready to be installed"
+     */
+    public function checkTaskReadiness(int $odooId): bool;
+
+    /**
+     * Get total debt (credit) for a customer from res.partner
+     */
+    public function getCustomerDebt(int $odooId): float;
+
+    /**
+     * Get Customer Invoices (account.move)
+     */
+    public function getCustomerInvoices(int $odooId, ?string $phone = null): array;
 }

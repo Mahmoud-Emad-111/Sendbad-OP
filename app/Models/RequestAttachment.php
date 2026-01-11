@@ -9,10 +9,10 @@ class RequestAttachment extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['service_request_id', 'file_path', 'file_type'];
+    protected $fillable = ['attachable_id', 'attachable_type', 'file_path', 'file_type'];
 
-    public function request()
+    public function attachable()
     {
-        return $this->belongsTo(ServiceRequest::class, 'service_request_id');
+        return $this->morphTo();
     }
 }

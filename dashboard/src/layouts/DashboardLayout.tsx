@@ -5,10 +5,13 @@ import {
   Map as MapIcon,
   LogOut,
   Settings,
-  Bell
+  Package,
+  TrendingUp,
+  ClipboardList
 } from 'lucide-react';
 import clsx from 'clsx';
 import { authService } from '../services/auth';
+import NotificationDropdown from '../components/NotificationDropdown';
 
 const SidebarItem = ({ icon: Icon, label, path, active }: any) => {
   const navigate = useNavigate();
@@ -36,7 +39,10 @@ export default function DashboardLayout() {
     { icon: MapIcon, label: 'الخريطة الحية', path: '/dashboard/map' },
     { icon: Users, label: 'المستخدمين', path: '/dashboard/users' },
     { icon: LayoutDashboard, label: 'الفنيين', path: '/dashboard/technicians' },
-    { icon: Settings, label: 'الطلبات', path: '/dashboard/requests' },
+    { icon: Settings, label: 'طلبات الصيانه', path: '/dashboard/requests' },
+    { icon: ClipboardList, label: 'طلبات التركيب', path: '/dashboard/requests/installation' },
+    { icon: Package, label: 'المخزون', path: '/dashboard/inventory' },
+    { icon: TrendingUp, label: 'التقارير', path: '/dashboard/reports' },
     { icon: Settings, label: 'الإعدادات', path: '/dashboard/settings' },
   ];
 
@@ -80,10 +86,9 @@ export default function DashboardLayout() {
           </h2>
 
           <div className="flex items-center gap-4">
-            <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-full relative">
-              <Bell size={20} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-            </button>
+            {/* Notification Dropdown replacing static Bell */}
+            <NotificationDropdown />
+
             <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold">
               A
             </div>
@@ -92,6 +97,7 @@ export default function DashboardLayout() {
 
         <div className="p-6">
           <Outlet />
+
         </div>
       </main>
     </div>

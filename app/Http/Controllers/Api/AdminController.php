@@ -82,4 +82,71 @@ class AdminController extends Controller
             ]
         ]);
     }
+    public function getUserDetails(Request $request, $id, \App\Services\Odoo\OdooService $odoo)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $user = User::with(['serviceRequests' => function($q) {
+            $q->latest();
+        }, 'assignedRequests' => function($q) {
+            $q->with('user')->latest();
+        }])->findOrFail($id);
+
+        $odooData = [];
+        $odooPartner = $odoo->findCustomerByPhone($user->phone);
+
+        if ($odooPartner) {
+            $orders = $odoo->getCustomerOrders($odooPartner['id']);
+            $odooData = [
+                'partner_id' => $odooPartner['id'],
+                'orders' => $orders
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'user' => $user,
+                'odoo' => $odooData
+            ]
+        ]);
+    }
+    public function getPerformanceReports()
+    {
+        // 1. Top Technicians by Rating
+        $topTechnicians = User::where('role', 'technician')
+            ->whereHas('assignedRequests', function($q) {
+                $q->whereNotNull('rating');
+            })
+            ->withAvg('assignedRequests as avg_rating', 'rating')
+            ->withCount(['assignedRequests as completed_count' => function($q) {
+                $q->where('status', 'completed');
+            }])
+            ->orderByDesc('avg_rating')
+            ->take(5)
+            ->get();
+
+        // 2. Average Completion Time (in hours)
+        $completionStats = \App\Models\ServiceRequest::whereNotNull('completed_at')
+            ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, completed_at)) as avg_hours_to_complete')
+            ->first();
+
+        // 3. Ratings Breakdown
+        $ratingsBreakdown = \App\Models\ServiceRequest::whereNotNull('rating')
+            ->selectRaw('rating, count(*) as count')
+            ->groupBy('rating')
+            ->orderByDesc('rating')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'top_technicians' => $topTechnicians,
+                'avg_completion_hours' => round($completionStats->avg_hours_to_complete ?? 0, 1),
+                'ratings_breakdown' => $ratingsBreakdown
+            ]
+        ]);
+    }
 }

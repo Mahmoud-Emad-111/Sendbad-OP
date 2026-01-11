@@ -50,4 +50,14 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function serviceRequests()
+    {
+        return $this->hasMany(ServiceRequest::class);
+    }
+
+    public function assignedRequests()
+    {
+        return $this->hasMany(ServiceRequest::class, 'technician_id');
+    }
 }

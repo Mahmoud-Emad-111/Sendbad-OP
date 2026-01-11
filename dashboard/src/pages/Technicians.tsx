@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../services/auth';
-import { UserPlus, Star, MapPin, Phone, Shield, Settings, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, Star, MapPin, Phone, Shield, Settings, Eye, EyeOff, FileText, X, CheckCircle, Clock } from 'lucide-react';
 import clsx from 'clsx';
 import api from '../services/auth'; // Using axios instance
 
@@ -11,6 +11,10 @@ export default function Technicians() {
   const [showPassword, setShowPassword] = useState(false);
   const [newTech, setNewTech] = useState({ name: '', phone: '', password: '' });
   const [submitting, setSubmitting] = useState(false);
+
+  const [historyModal, setHistoryModal] = useState<{show: boolean, tech: any | null}>({show: false, tech: null});
+  const [techHistory, setTechHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
     loadTechnicians();
@@ -48,6 +52,21 @@ export default function Technicians() {
     } finally {
         setSubmitting(false);
     }
+  };
+
+  const openHistory = async (tech: any) => {
+      setHistoryModal({show: true, tech});
+      setHistoryLoading(true);
+      try {
+          const res = await api.get(`/admin/users/${tech.id}`);
+          if (res.data.success) {
+              setTechHistory(res.data.data.user.assigned_requests || []);
+          }
+      } catch (error) {
+          console.error("Failed to load history", error);
+      } finally {
+          setHistoryLoading(false);
+      }
   };
 
   return (
@@ -113,7 +132,11 @@ export default function Technicians() {
                     </div>
 
                     <div className="mt-4 pt-4 border-t border-slate-100 flex gap-2">
-                        <button className="flex-1 bg-slate-50 text-slate-700 py-2 rounded-lg text-sm font-medium hover:bg-slate-100">
+                        <button
+                            onClick={() => openHistory(tech)}
+                            className="flex-1 bg-slate-50 text-slate-700 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 flex items-center justify-center gap-2"
+                        >
+                            <FileText size={16} />
                             سجل الطلبات
                         </button>
                         <button className="flex-1 bg-slate-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-slate-800">
@@ -190,6 +213,71 @@ export default function Technicians() {
                     </div>
                 </form>
             </div>
+        </div>
+      )}
+
+      {/* History Modal */}
+      {historyModal.show && historyModal.tech && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+             <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200 flex flex-col">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-900">سجل طلبات {historyModal.tech.name}</h2>
+                        <span className="text-sm text-slate-500">عرض كل المهام المسندة للفني</span>
+                    </div>
+                    <button onClick={() => setHistoryModal({show: false, tech: null})} className="text-slate-400 hover:text-red-500">
+                        <X size={24} />
+                    </button>
+                </div>
+
+                <div className="p-0 overflow-y-auto flex-1">
+                    {historyLoading ? (
+                        <div className="p-12 text-center text-slate-500">جاري تحميل السجل...</div>
+                    ) : techHistory.length === 0 ? (
+                        <div className="p-12 text-center text-slate-500 flex flex-col items-center gap-3">
+                            <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center">
+                                <FileText className="text-slate-400" />
+                            </div>
+                            <p>لا يوجد طلبات سابقة لهذا الفني</p>
+                        </div>
+                    ) : (
+                        <table className="w-full text-right">
+                            <thead className="bg-slate-50 text-slate-600 font-medium text-sm sticky top-0">
+                                <tr>
+                                    <th className="px-6 py-4">رقم الطلب</th>
+                                    <th className="px-6 py-4">التاريخ</th>
+                                    <th className="px-6 py-4">العميل</th>
+                                    <th className="px-6 py-4">النوع</th>
+                                    <th className="px-6 py-4">الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {techHistory.map((req: any) => (
+                                    <tr key={req.id} className="hover:bg-slate-50">
+                                        <td className="px-6 py-4 font-mono text-slate-500">#{req.id}</td>
+                                        <td className="px-6 py-4 text-sm text-slate-600">{new Date(req.created_at).toLocaleDateString('ar-EG')}</td>
+                                        <td className="px-6 py-4 font-medium">{req.user?.name || '---'}</td>
+                                        <td className="px-6 py-4 text-slate-600">{req.service_type}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={clsx(
+                                                "px-2.5 py-1 rounded-full text-xs font-semibold flex items-center w-fit gap-1",
+                                                req.status === 'completed' ? "bg-green-100 text-green-700" :
+                                                req.status === 'pending' ? "bg-amber-100 text-amber-700" :
+                                                "bg-blue-100 text-blue-700"
+                                            )}>
+                                                {req.status === 'completed' ? <CheckCircle size={12} /> :
+                                                 req.status === 'pending' ? <Clock size={12} /> :
+                                                 <Settings size={12} />}
+                                                {req.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+             </div>
         </div>
       )}
     </div>

@@ -18,7 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->alias([
+            'financial.eligibility' => \App\Http\Middleware\EnsureFinancialEligibility::class,
+            'task.readiness' => \App\Http\Middleware\EnsureTaskReadiness::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

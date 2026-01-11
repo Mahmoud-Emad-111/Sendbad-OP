@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade'); // Customer
             $table->foreignId('technician_id')->nullable()->constrained('users')->onDelete('set null'); // Assigned Tech
 
-            $table->enum('service_type', ['installation', 'maintenance']);
+            $table->enum('service_type', ['installation', 'maintenance', 'repair', 'inspection']);
             $table->text('description');
             $table->dateTime('scheduled_at');
 

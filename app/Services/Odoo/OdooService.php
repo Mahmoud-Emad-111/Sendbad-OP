@@ -70,11 +70,21 @@ class OdooService implements OdooIntegrationInterface
             $uid = $this->getUid();
 
             // Prepare the domain (search criteria)
-            // Note: Odoo phone numbers can be messy.
-            // We search exactly as provided for now, but in production, we might need normalization.
+            // Odoo Format: 968 9922 3303 (Spaces)
+            // Input: 96899223303 (No spaces)
+
+            $formattedPhone = $phone;
+            // Basic formatting for Oman numbers: 968 XXXX XXXX or 968 XXXX XXXX
+            // User specified: 968 9922 3303 (3-4-4)
+            if (strlen($phone) == 11 && str_starts_with($phone, '968')) {
+                 $formattedPhone = substr($phone, 0, 3) . ' ' . substr($phone, 3, 4) . ' ' . substr($phone, 7);
+            }
+
+            // Using '|' (OR) operator to search for raw input OR formatted version
             $domain = [
-                // ['sale_order_ids', '!=', false], // Temporarily disabled
-                ['phone', 'ilike', $phone]
+                '|',
+                ['phone', 'ilike', $phone],
+                ['phone', 'ilike', $formattedPhone]
             ];
 
             $response = Http::post($this->url . '/jsonrpc', [
@@ -121,12 +131,118 @@ class OdooService implements OdooIntegrationInterface
         }
     }
 
-    public function getCustomerOrders(int $odooId): array
+    /**
+     * Helper to find ALL partner IDs matching Phone, Mobile, or Name
+     */
+    private function getPartnerIdsByCriteria(?string $phone, ?string $name = null): array
+    {
+        try {
+            $phoneIds = [];
+            if ($phone) {
+                $formattedPhone = $phone;
+                // Basic formatting for Oman numbers: 968 XXXX XXXX
+                if (strlen($phone) == 11 && str_starts_with($phone, '968')) {
+                     $formattedPhone = substr($phone, 0, 3) . ' ' . substr($phone, 3, 4) . ' ' . substr($phone, 7);
+                }
+
+                // Search in both 'phone' and 'mobile' using OR
+                $phoneDomain = [
+                    '|', '|', '|',
+                    ['phone', 'ilike', $phone],
+                    ['phone', 'ilike', $formattedPhone],
+                    ['mobile', 'ilike', $phone],
+                    ['mobile', 'ilike', $formattedPhone]
+                ];
+
+                 // Execute Phone Search
+                $response = Http::post($this->url . '/jsonrpc', [
+                    'jsonrpc' => '2.0',
+                    'method' => 'call',
+                    'params' => [
+                        'service' => 'object',
+                        'method' => 'execute_kw',
+                        'args' => [
+                            $this->db, $this->getUid(), $this->password, 'res.partner', 'search_read',
+                            [$phoneDomain],
+                            ['fields' => ['id']]
+                        ]
+                    ],
+                    'id' => rand(1, 10000)
+                ]);
+
+                $result = $response->json();
+                if (!isset($result['error'])) {
+                     $phoneIds = array_column($result['result'] ?? [], 'id');
+                }
+            }
+
+            $nameIds = [];
+            if ($name) {
+                 // Execute Name Search
+                 $response = Http::post($this->url . '/jsonrpc', [
+                    'jsonrpc' => '2.0',
+                    'method' => 'call',
+                    'params' => [
+                        'service' => 'object',
+                        'method' => 'execute_kw',
+                        'args' => [
+                            $this->db, $this->getUid(), $this->password, 'res.partner', 'search_read',
+                            [[['name', 'ilike', $name]]],
+                            ['fields' => ['id']]
+                        ]
+                    ],
+                    'id' => rand(1, 10000)
+                ]);
+
+                $result = $response->json();
+                if (!isset($result['error'])) {
+                    $nameIds = array_column($result['result'] ?? [], 'id');
+                }
+            }
+
+            return array_unique(array_merge($phoneIds, $nameIds));
+
+        } catch (Exception $e) {
+            Log::error('Odoo Error (Partner Criteria): ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function getCustomerOrders(int $odooId, ?string $phone = null, ?string $name = null): array
     {
         try {
             $uid = $this->getUid();
 
-           $response = Http::post($this->url . '/jsonrpc', [
+           // Strict Implementation of User's JSON Query
+           // 1. Domain: [['project_id', '!=', false], ['partner_id.phone', '=', '+968 XXXX XXXX']]
+
+            $domain = [['project_id', '!=', false]];
+
+            if ($phone) {
+                // FORCE Format: +968 9999 8888
+                $digits = preg_replace('/[^0-9]/', '', $phone);
+
+                // If it looks like a local mobile (8 digits), prepend 968
+                if (strlen($digits) == 8) {
+                    $digits = '968' . $digits;
+                }
+
+                // If it is 11 digits starting with 968, format it
+                if (strlen($digits) == 11 && str_starts_with($digits, '968')) {
+                    $formatted = '+' . substr($digits, 0, 3) . ' ' . substr($digits, 3, 4) . ' ' . substr($digits, 7);
+                } else {
+                     $formatted = $phone;
+                }
+
+                // User used "=" in their example, implying exact match.
+                // We will use that exact format.
+                $domain[] = ['partner_id.phone', '=', $formatted];
+            } else {
+                // Fallback (should not happen in this flow)
+                $domain[] = ['partner_id', 'child_of', $odooId];
+            }
+
+            $response = Http::post($this->url . '/jsonrpc', [
                 'jsonrpc' => '2.0',
                 'method' => 'call',
                 'params' => [
@@ -139,10 +255,21 @@ class OdooService implements OdooIntegrationInterface
                         'sale.order',
                         'search_read',
                         [
-                            [['partner_id', '=', $odooId]]
+                           $domain
                         ],
                         [
-                            'fields' => ['amount_total', 'date_order', 'amount_due']
+                            'fields' => [
+                                'id',
+                                'name',
+                                'date_order',
+                                'partner_id',
+                                'amount_due',
+                                'amount_total',
+                                'invoice_status',
+                                'invoice_ids'
+                            ],
+                            'limit' => 50,
+                            'order' => 'date_order desc'
                         ]
                     ]
                 ],
@@ -153,6 +280,285 @@ class OdooService implements OdooIntegrationInterface
 
             if (isset($result['error'])) {
                 Log::error('Odoo Error (Orders): ' . json_encode($result['error']));
+                return [];
+            }
+
+            return $result['result'] ?? [];
+
+        } catch (Exception $e) {
+            Log::error('Odoo Connection Error: ' . $e->getMessage());
+            return [];
+        }
+    }
+    public function getProducts(int $limit = 50): array
+    {
+        try {
+            $uid = $this->getUid();
+
+            $response = Http::post($this->url . '/jsonrpc', [
+                'jsonrpc' => '2.0',
+                'method' => 'call',
+                'params' => [
+                    'service' => 'object',
+                    'method' => 'execute_kw',
+                    'args' => [
+                        $this->db,
+                        $uid,
+                        $this->password,
+                        'product.product',
+                        'search_read',
+                        [
+                            [['type', '=', 'product']] // Only storeable products
+                        ],
+                        [
+                            'fields' => ['id', 'name', 'list_price', 'qty_available', 'uom_id'],
+                            'limit' => $limit
+                        ]
+                    ]
+                ],
+                'id' => rand(1, 100000)
+            ]);
+
+            $result = $response->json();
+
+            if (isset($result['error'])) {
+                Log::error('Odoo Error (Products): ' . json_encode($result['error']));
+                return [];
+            }
+
+            return $result['result'] ?? [];
+
+        } catch (Exception $e) {
+            Log::error('Odoo Connection Error: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function checkTaskReadiness(int $odooId): bool
+    {
+        try {
+            $uid = $this->getUid();
+
+           // Strict: Search for task with EXACT name "The product is complete..."
+           // AND it must be marked as "Ready" (Green Checkmark / Done state)
+            $response = Http::post($this->url . '/jsonrpc', [
+                'jsonrpc' => '2.0',
+                'method' => 'call',
+                'params' => [
+                    'service' => 'object',
+                    'method' => 'execute_kw',
+                    'args' => [
+                        $this->db,
+                        $uid,
+                        $this->password,
+                        'project.task',
+                        'search_count',
+                        [
+                            [
+                                ['partner_id', '=', $odooId],
+                                ['name', '=', 'The product is complete and ready to be installed'],
+                                ['state', 'in', ['done', '1_done']] // Allow both standard 'done' and '1_done' (Ready)
+                            ]
+                        ]
+                    ]
+                ],
+                'id' => rand(1, 100000)
+            ]);
+
+            $result = $response->json();
+
+            if (isset($result['error'])) {
+                Log::error('Odoo Error (Task Check): ' . json_encode($result['error']));
+                return false;
+            }
+
+            $count = $result['result'] ?? 0;
+            return $count > 0;
+
+        } catch (Exception $e) {
+            Log::error('Odoo Connection Error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function getUserTasks(int $odooId): array
+    {
+        try {
+            $uid = $this->getUid();
+
+            // 1. Search for tasks first (without potentially breaking fields)
+            $response = Http::post($this->url . '/jsonrpc', [
+                'jsonrpc' => '2.0',
+                'method' => 'call',
+                'params' => [
+                    'service' => 'object',
+                    'method' => 'execute_kw',
+                    'args' => [
+                        $this->db,
+                        $uid,
+                        $this->password,
+                        'project.task',
+                        'search_read',
+                        [
+                            [['partner_id', '=', $odooId]]
+                        ],
+                        [
+                            'fields' => ['id', 'name', 'stage_id', 'date_deadline'],
+                            'limit' => 50,
+                            'order' => 'date_deadline desc, id desc'
+                        ]
+                    ]
+                ],
+                'id' => rand(1, 100000)
+            ]);
+
+            $result = $response->json();
+            $tasks = $result['result'] ?? [];
+
+            if (empty($tasks)) {
+                return [];
+            }
+
+            // 2. Extract IDs and fetch 'kanban_state' via explicit 'read'
+            // This bypasses potential issues with search_read or permissions on mixed fields
+            $poIds = array_column($tasks, 'id');
+
+            $readResponse = Http::post($this->url . '/jsonrpc', [
+                'jsonrpc' => '2.0',
+                'method' => 'call',
+                'params' => [
+                    'service' => 'object',
+                    'method' => 'execute_kw',
+                    'args' => [
+                        $this->db,
+                        $uid,
+                        $this->password,
+                        'project.task',
+                        'read',
+                        [$poIds],
+                        ['fields' => ['kanban_state']]
+                    ]
+                ],
+                'id' => rand(1, 100000)
+            ]);
+
+            $readResult = $readResponse->json();
+            if (isset($readResult['result'])) {
+                $states = [];
+                foreach ($readResult['result'] as $item) {
+                    $states[$item['id']] = $item['kanban_state'];
+                }
+
+                // Merge kanban_state back into tasks
+                foreach ($tasks as &$task) {
+                    $task['kanban_state'] = $states[$task['id']] ?? 'unknown';
+                }
+            }
+
+            return $tasks;
+
+        } catch (Exception $e) {
+            Log::error('Odoo Connection Error (Get Tasks): ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function getCustomerDebt(int $odooId): float
+    {
+        try {
+            $uid = $this->getUid();
+
+            // Fetch 'debit' field from res.partner
+            // In Odoo, for Customers:
+            // 'debit' = Total Receivable (Amount they owe us)
+            // 'credit' = Total Payable (Amount we owe them / Advance payments)
+            $response = Http::post($this->url . '/jsonrpc', [
+                'jsonrpc' => '2.0',
+                'method' => 'call',
+                'params' => [
+                    'service' => 'object',
+                    'method' => 'execute_kw',
+                    'args' => [
+                        $this->db,
+                        $uid,
+                        $this->password,
+                        'res.partner',
+                        'read',
+                        [[$odooId]],
+                        ['fields' => ['debit']]
+                    ]
+                ],
+                'id' => rand(1, 100000)
+            ]);
+
+            $result = $response->json();
+
+            if (isset($result['error'])) {
+                Log::error('Odoo Error (Debt Check): ' . json_encode($result['error']));
+                return 0.0;
+            }
+
+            $partnerData = $result['result'][0] ?? [];
+            return (float) ($partnerData['debit'] ?? 0.0);
+
+        } catch (Exception $e) {
+            Log::error('Odoo Connection Error: ' . $e->getMessage());
+            return 0.0;
+        }
+    }
+
+    public function getCustomerInvoices(int $odooId, ?string $phone = null): array
+    {
+        try {
+            $uid = $this->getUid();
+
+            // Default: search by ID and its children
+            $partnerIds = [$odooId];
+
+            if ($phone) {
+                // Check if getPartnerIdsByCriteria exists before calling (it was added in the previous step)
+                // We pass null for name as getCustomerInvoices signature doesn't support it yet
+                $foundIds = $this->getPartnerIdsByCriteria($phone, null);
+                if (!empty($foundIds)) {
+                     $partnerIds = array_unique(array_merge($partnerIds, $foundIds));
+                }
+            }
+
+            // Standard Invoice Filters
+            $finalDomain = [
+                ['partner_id', 'in', $partnerIds],
+                ['move_type', '=', 'out_invoice'],
+                ['state', '=', 'posted'],
+                ['payment_state', '!=', 'paid']
+            ];
+
+            $response = Http::post($this->url . '/jsonrpc', [
+                'jsonrpc' => '2.0',
+                'method' => 'call',
+                'params' => [
+                    'service' => 'object',
+                    'method' => 'execute_kw',
+                    'args' => [
+                        $this->db,
+                        $uid,
+                        $this->password,
+                        'account.move', // Invoices
+                        'search_read',
+                        [
+                             $finalDomain
+                        ],
+                        [
+                            'fields' => ['name', 'amount_total', 'amount_residual', 'payment_state', 'partner_id']
+                        ]
+                    ]
+                ],
+                'id' => rand(1, 100000)
+            ]);
+
+            $result = $response->json();
+
+            if (isset($result['error'])) {
+                Log::error('Odoo Error (Invoices): ' . json_encode($result['error']));
                 return [];
             }
 
