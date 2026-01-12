@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 // import { db } from '../services/firebase';
+import { useTranslation } from 'react-i18next';
 
 const containerStyle = {
   width: '100%',
@@ -23,6 +24,7 @@ const mapOptions = {
 };
 
 export default function LiveMap() {
+  const { t } = useTranslation();
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY
@@ -38,15 +40,15 @@ export default function LiveMap() {
     setMap(null);
   }, []);
 
-  if (!isLoaded) return <div className="flex h-full items-center justify-center">Loading Maps...</div>;
+  if (!isLoaded) return <div className="flex h-full items-center justify-center">{t('common.loading')}</div>;
 
   return (
     <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
         <div className="mb-4 flex justify-between items-center">
-            <h3 className="font-bold text-slate-800">تتبع المناديب (Live Tracking)</h3>
+            <h3 className="font-bold text-slate-800">{t('live_map.title')}</h3>
             <div className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded-full flex items-center gap-2">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                متصل بالشبكة
+                {t('live_map.online')}
             </div>
         </div>
       <GoogleMap

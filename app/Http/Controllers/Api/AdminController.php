@@ -62,6 +62,11 @@ class AdminController extends Controller
         $totalTechnicians = User::where('role', 'technician')->count();
         $totalCustomers = User::where('role', 'customer')->count();
 
+        // Installation Requests Stats
+        $totalInstallation = \App\Models\InstallationRequest::count();
+        $pendingInstallation = \App\Models\InstallationRequest::where('status', 'pending')->count();
+        $completedInstallation = \App\Models\InstallationRequest::where('status', 'completed')->count();
+
         $recentRequests = \App\Models\ServiceRequest::with(['user', 'technician'])
             ->latest()
             ->take(5)
@@ -76,7 +81,10 @@ class AdminController extends Controller
                     'assigned_requests' => $assignedRequests,
                     'completed_requests' => $completedRequests,
                     'technicians' => $totalTechnicians,
-                    'customers' => $totalCustomers
+                    'customers' => $totalCustomers,
+                    'total_installations' => $totalInstallation,
+                    'pending_installations' => $pendingInstallation,
+                    'completed_installations' => $completedInstallation
                 ],
                 'recent_requests' => $recentRequests
             ]
@@ -95,10 +103,11 @@ class AdminController extends Controller
         }])->findOrFail($id);
 
         $odooData = [];
-        $odooPartner = $odoo->findCustomerByPhone($user->phone);
+        $odooPartner = $odoo->findCustomerByPhoneOrName($user->phone, $user->name);
 
         if ($odooPartner) {
-            $orders = $odoo->getCustomerOrders($odooPartner['id']);
+            // Pass both phone and name to ensure we find orders
+            $orders = $odoo->getCustomerOrders($odooPartner['id'], $user->phone, $user->name);
             $odooData = [
                 'partner_id' => $odooPartner['id'],
                 'orders' => $orders

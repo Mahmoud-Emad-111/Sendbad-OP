@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import api from '../services/auth';
-import { Calendar, User, CheckCircle, Clock, Eye, AlertCircle, Settings, MapPin, Package, ClipboardList } from 'lucide-react';
+import { CheckCircle, Clock, MapPin, Eye, ClipboardList, Package, User, Settings, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function InstallationRequests() {
+  const { t, i18n } = useTranslation();
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -55,12 +57,12 @@ export default function InstallationRequests() {
 
   const StatusBadge = ({ status }: { status: string }) => {
     const styles: any = {
-        pending: { bg: 'bg-amber-100', text: 'text-amber-700', label: 'قيد الانتظار', icon: Clock },
-        assigned: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'تم الإسناد', icon: User },
-        on_way: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'في الطريق', icon: Clock },
-        in_progress: { bg: 'bg-indigo-100', text: 'text-indigo-700', label: 'جاري العمل', icon: Settings },
-        completed: { bg: 'bg-green-100', text: 'text-green-700', label: 'مكتمل', icon: CheckCircle },
-        canceled: { bg: 'bg-red-100', text: 'text-red-700', label: 'ملغي', icon: AlertCircle },
+        pending: { bg: 'bg-amber-100', text: 'text-amber-700', label: 'pending', icon: Clock },
+        assigned: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'assigned', icon: User },
+        on_way: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'on_way', icon: Clock },
+        in_progress: { bg: 'bg-indigo-100', text: 'text-indigo-700', label: 'in_progress', icon: Settings },
+        completed: { bg: 'bg-green-100', text: 'text-green-700', label: 'completed', icon: CheckCircle },
+        canceled: { bg: 'bg-red-100', text: 'text-red-700', label: 'canceled', icon: AlertCircle },
     };
 
     const config = styles[status] || styles.pending;
@@ -69,7 +71,7 @@ export default function InstallationRequests() {
     return (
         <span className={clsx("flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold", config.bg, config.text)}>
             <Icon size={14} />
-            {config.label}
+            {t(`requests.statuses.${config.label}`)}
         </span>
     );
   };
@@ -82,26 +84,26 @@ export default function InstallationRequests() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <ClipboardList className="text-blue-600" />
-            طلبات التركيب
+            {t('installation.title')}
           </h1>
-          <p className="text-slate-500">إدارة ومتابعة طلبات التركيب الجديدة</p>
+          <p className="text-slate-500">{t('installation.subtitle')}</p>
         </div>
         <button
             onClick={() => window.location.href = "/dashboard/requests/new"}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl transition-colors font-medium shadow-sm hover:shadow-md"
         >
             <span>+</span>
-            طلب تركيب جديد
+            {t('installation.new_request')}
         </button>
       </div>
 
       {/* Filter Toolbar */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-4">
            {/* Search */}
-           <div className="md:col-span-2">
+           <div className="md:col-span-2 relative">
                <input
                    type="text"
-                   placeholder="بحث (رقم الطلب، اسم العميل)..."
+                   placeholder={t('requests.search_placeholder')}
                    className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                    value={filters.search}
                    onChange={(e) => handleFilterChange('search', e.target.value)}
@@ -114,41 +116,44 @@ export default function InstallationRequests() {
                 value={filters.status}
                 onChange={(e) => handleFilterChange('status', e.target.value)}
             >
-                <option value="all">كل الحالات</option>
-                <option value="pending">قيد الانتظار</option>
-                <option value="assigned">تم الإسناد</option>
-                <option value="completed">مكتمل</option>
+                <option value="all">{t('requests.all_statuses')}</option>
+                <option value="pending">{t('requests.statuses.pending')}</option>
+                <option value="assigned">{t('requests.statuses.assigned')}</option>
+                <option value="completed">{t('requests.statuses.completed')}</option>
             </select>
 
              {/* Date From */}
-             <input
-                type="date"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                value={filters.date_from}
-                onChange={(e) => handleFilterChange('date_from', e.target.value)}
-            />
+             <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-500">{t('requests.date_from')}:</span>
+                 <input
+                    type="date"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    value={filters.date_from}
+                    onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                />
+             </div>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-            <table className="w-full text-right">
+            <table className="w-full text-start">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-medium text-sm">
                     <tr>
-                        <th className="px-6 py-4">رقم الطلب</th>
-                        <th className="px-6 py-4">المنتج</th>
-                        <th className="px-6 py-4">الكمية</th>
-                        <th className="px-6 py-4">الموقع</th>
-                        <th className="px-6 py-4">جاهزية الموقع</th>
-                        <th className="px-6 py-4">الموعد</th>
-                        <th className="px-6 py-4">الحالة</th>
-                        <th className="px-6 py-4">إجراءات</th>
+                        <th className="px-6 py-4 text-start">{t('user_details.request_id')}</th>
+                        <th className="px-6 py-4 text-start">{t('installation.table.product')}</th>
+                        <th className="px-6 py-4 text-start">{t('installation.table.quantity')}</th>
+                        <th className="px-6 py-4 text-start">{t('installation.table.location')}</th>
+                        <th className="px-6 py-4 text-start">{t('installation.table.site_readiness')}</th>
+                        <th className="px-6 py-4 text-start">{t('requests.scheduled_at')}</th>
+                        <th className="px-6 py-4 text-start">{t('common.status')}</th>
+                        <th className="px-6 py-4 text-start">{t('common.actions')}</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                     {loading ? (
                         <tr><td colSpan={8}><LoadingSpinner /></td></tr>
                     ) : requests.length === 0 ? (
-                        <tr><td colSpan={8} className="px-6 py-8 text-center text-slate-500">لا يوجد طلبات تركيب حالياً</td></tr>
+                        <tr><td colSpan={8} className="px-6 py-8 text-center text-slate-500">{t('installation.no_requests')}</td></tr>
                     ) : (
                         requests.map(req => (
                             <tr key={req.id} className="hover:bg-slate-50 transition-colors">
@@ -156,7 +161,7 @@ export default function InstallationRequests() {
                                 <td className="px-6 py-4 font-medium text-slate-900">
                                     <div className="flex items-center gap-2">
                                         <Package size={16} className="text-slate-400" />
-                                        {req.details?.product_type || 'غير محدد'}
+                                        {req.details?.product_type || t('common.undefined')}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 text-slate-600 font-mono font-bold">
@@ -170,18 +175,18 @@ export default function InstallationRequests() {
                                 </td>
                                 <td className="px-6 py-4">
                                      <span className={clsx("text-xs font-bold px-2 py-1 rounded", req.details?.is_site_ready ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
-                                        {req.details?.is_site_ready ? 'جاهز' : 'غير جاهز'}
+                                        {req.details?.is_site_ready ? t('installation.site_ready') : t('installation.site_not_ready')}
                                      </span>
                                 </td>
                                 <td className="px-6 py-4 text-slate-600 text-sm">
-                                    <div dir="ltr">{new Date(req.scheduled_at).toLocaleDateString()}</div>
+                                    <div dir="ltr">{new Date(req.scheduled_at).toLocaleDateString(i18n.language === 'ar' ? 'ar-EG' : 'en-US')}</div>
                                 </td>
                                 <td className="px-6 py-4"><StatusBadge status={req.status} /></td>
                                 <td className="px-6 py-4">
                                     <button
                                         onClick={() => window.location.href = `/dashboard/requests/installation/${req.id}`}
                                         className="text-slate-400 hover:text-blue-600 transition-colors p-2 hover:bg-blue-50 rounded-full"
-                                        title="عرض التفاصيل"
+                                        title={t('common.view_details')}
                                     >
                                         <Eye size={18} />
                                     </button>

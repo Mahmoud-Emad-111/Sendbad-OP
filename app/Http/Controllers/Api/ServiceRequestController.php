@@ -312,7 +312,7 @@ class ServiceRequestController extends Controller
         }
 
         // Debug: Get Partner Name to verify we have the right person
-        $partnerInfo = $odoo->findCustomerByPhone($user->phone); // Or just read name by ID if we had a method
+        $partnerInfo = $odoo->findCustomerByPhoneOrName($user->phone, $user->name ?? ''); // Or just read name by ID if we had a method
         $partnerName = $partnerInfo['name'] ?? 'Unknown';
 
         // 1. Check Financials (Must have 0 due)

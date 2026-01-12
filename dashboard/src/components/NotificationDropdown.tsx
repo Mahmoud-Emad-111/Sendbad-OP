@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, AlertTriangle, Calendar, Clock, X } from 'lucide-react';
+import { Bell, AlertTriangle, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/auth';
 import clsx from 'clsx';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 
 interface Notification {
-  id: string | number; // Allow string IDs for composite keys
+  id: string | number;
   type: 'deadline' | 'new_request';
   title: string;
   message: string;
@@ -17,13 +18,13 @@ interface Notification {
 }
 
 export default function NotificationDropdown() {
+  const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -34,14 +35,11 @@ export default function NotificationDropdown() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Track the highest ID seen to detect new items
   const [maxSeenId, setMaxSeenId] = useState<number>(0);
   const isFirstRun = useRef(true);
 
-  // Fetch Notifications (Deadlines and New Requests)
   useEffect(() => {
     checkNotifications();
-    // Refresh every 5 minutes
     const interval = setInterval(checkNotifications, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
@@ -49,12 +47,11 @@ export default function NotificationDropdown() {
   const checkNotifications = async () => {
     setLoading(true);
     try {
-      // Fetch recent requests (assuming ID is incremental)
       const res = await api.get('/requests?sort=id&direction=desc');
       if (res.data.success) {
         const requests = res.data.data;
         if (requests.length === 0) {
-          setLoading(false); // Ensure loading is false even if no requests
+          setLoading(false);
           return;
         }
 
@@ -63,31 +60,27 @@ export default function NotificationDropdown() {
         const newNotifications: Notification[] = [];
         let hasNewRequest = false;
 
-        // 1. Check for NEW Requests
         if (!isFirstRun.current && currentMaxId > maxSeenId) {
-            // Find specific new requests
             const brandNew = requests.filter((r: any) => r.id > maxSeenId);
             brandNew.forEach((req: any) => {
                  hasNewRequest = true;
                  newNotifications.push({
-                     id: `new-${req.id}`, // Unique ID for new requests
+                     id: `new-${req.id}`,
                      type: 'new_request',
-                     title: 'طلب خدمة جديد ✨',
-                     message: `وصل طلب جديد #${req.id}: ${req.service_type || 'طلب عام'}`,
-                     time: new Date(req.created_at || Date.now()).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'}),
-                     date: new Date(req.created_at || Date.now()).toLocaleDateString('ar-EG'),
+                     title: t('notifications.new_request_title'),
+                     message: t('notifications.new_request_message', {id: req.id, type: req.service_type || 'General'}),
+                     time: new Date(req.created_at || Date.now()).toLocaleTimeString(i18n.language, {hour:'2-digit', minute:'2-digit'}),
+                     date: new Date(req.created_at || Date.now()).toLocaleDateString(i18n.language),
                      requestId: req.id,
                      isRead: false
                  });
             });
         }
 
-        // Update Max ID
         if (currentMaxId > maxSeenId) {
             setMaxSeenId(currentMaxId);
         }
 
-        // 2. Check Dealines
         requests.forEach((req: any) => {
            if (!req.task_end_time || req.status !== 'in_progress') return;
            const endTime = new Date(req.task_end_time);
@@ -95,15 +88,14 @@ export default function NotificationDropdown() {
            const isPassed = endTime < today;
 
            if (isSameDay || isPassed) {
-               // Only add if not already covered by "new request" logic to avoid double noise for same item
                if (!newNotifications.find(n => n.requestId === req.id && n.type === 'new_request')) {
                    newNotifications.push({
-                       id: `deadline-${req.id}`, // Unique ID for deadline notifications
+                       id: `deadline-${req.id}`,
                        type: 'deadline',
-                       title: 'تنبيه الموعد النهائي ⏰',
-                       message: `الطلب #${req.id} ينتهي ${isPassed && !isSameDay ? 'بالفعل' : 'اليوم'}`,
-                       time: endTime.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'}),
-                       date: endTime.toLocaleDateString('ar-EG'),
+                       title: t('notifications.deadline_title'),
+                       message: t('notifications.deadline_message', {id: req.id, when: isPassed && !isSameDay ? t('common.already') : t('common.today')}),
+                       time: endTime.toLocaleTimeString(i18n.language, {hour:'2-digit', minute:'2-digit'}),
+                       date: endTime.toLocaleDateString(i18n.language),
                        requestId: req.id,
                        isRead: false
                    });
@@ -111,21 +103,21 @@ export default function NotificationDropdown() {
            }
         });
 
-        // Merge and De-Duplicate using STRING IDs
         if (newNotifications.length > 0) {
             setNotifications(prev => {
                 const combined = [...newNotifications, ...prev];
-                // Filter unique IDs (ensure we compare ID strings)
                 const unique = combined.filter((v, i, a) => a.findIndex(t => String(t.id) === String(v.id)) === i);
                 return unique;
             });
 
-            // Sound Logic
             try {
-                const soundFile = hasNewRequest ? '/new_request.mp3' : '/notification.mp3';
-                const audio = new Audio(soundFile);
-                audio.volume = 0.5;
-                audio.play().catch(e => console.log("Audio blocked:", e));
+                const isSoundEnabled = localStorage.getItem('notification_sound') !== 'false';
+                if (isSoundEnabled) {
+                    const soundFile = hasNewRequest ? '/new_request.mp3' : '/notification.mp3';
+                    const audio = new Audio(soundFile);
+                    audio.volume = 0.5;
+                    audio.play().catch(e => console.log("Audio blocked:", e));
+                }
             } catch (err) {
                 console.warn("Audio failed", err);
             }
@@ -147,13 +139,19 @@ export default function NotificationDropdown() {
       navigate(`/dashboard/requests/${notif.requestId}`);
   };
 
-  // Test sound function
   const testSound = (e: any) => {
       e.stopPropagation();
+      const isSoundEnabled = localStorage.getItem('notification_sound') !== 'false';
+
+      if (!isSoundEnabled) {
+          toast.info(t('notifications.sound_disabled'));
+          return;
+      }
+
       try {
           const audio = new Audio('/new_request.mp3');
           audio.volume = 0.5;
-          audio.play().then(() => toast.success("تم تشغيل الصوت")).catch(() => toast.error("متصفحك يمنع تشغيل الصوت تلقائياً"));
+          audio.play().then(() => toast.success(t('notifications.sound_test_success'))).catch(() => toast.error(t('notifications.sound_blocked')));
       } catch (err) {
           console.error(err);
       }
@@ -161,7 +159,6 @@ export default function NotificationDropdown() {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Bell Icon */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={clsx(
@@ -175,36 +172,33 @@ export default function NotificationDropdown() {
         )}
       </button>
 
-      {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute left-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-50 origin-top-left animate-in fade-in zoom-in-95 duration-200">
-            {/* Header */}
+        <div className="absolute left-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-50 origin-top-left animate-in fade-in zoom-in-95 duration-200 end-0 ltr:left-auto ltr:right-0 rtl:right-auto rtl:left-0">
             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <h3 className="font-semibold text-slate-800">الإشعارات</h3>
+                <h3 className="font-semibold text-slate-800">{t('notifications.title')}</h3>
                 <div className="flex items-center gap-2">
                     <button onClick={testSound} className="text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100">
-                        تجربة الصوت 🔊
+                        {t('notifications.test_sound')}
                     </button>
                     {unreadCount > 0 && (
                         <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded-full">
-                            {unreadCount} جديد
+                            {t('notifications.new_count', {count: unreadCount})}
                         </span>
                     )}
                 </div>
             </div>
 
-            {/* List */}
             <div className="max-h-[400px] overflow-y-auto">
                 {notifications.length === 0 ? (
                     <div className="p-8 text-center text-slate-400 flex flex-col items-center gap-2">
                         <Bell size={32} className="opacity-20" />
-                        <p className="text-sm">لا توجد إشعارات جديدة</p>
+                        <p className="text-sm">{t('notifications.empty')}</p>
                     </div>
                 ) : (
                     <div className="divide-y divide-slate-50">
                         {notifications.map((notif) => (
                             <div
-                                key={notif.id} // ID is now unique (e.g. deadline-75 or new-75)
+                                key={notif.id}
                                 onClick={() => handleNotificationClick(notif)}
                                 className="p-4 hover:bg-slate-50 cursor-pointer transition-colors group relative"
                             >
@@ -236,7 +230,7 @@ export default function NotificationDropdown() {
                                     </div>
                                 </div>
                                 <div className={clsx(
-                                    "absolute right-0 top-0 bottom-0 w-1 rounded-l opacity-0 group-hover:opacity-100 transition-opacity",
+                                    "absolute right-0 top-0 bottom-0 w-1 rounded-l opacity-0 group-hover:opacity-100 transition-opacity rtl:right-0 rtl:left-auto ltr:left-0 ltr:right-auto",
                                     notif.type === 'new_request' ? "bg-yellow-500" : "bg-red-500"
                                 )}></div>
                             </div>
@@ -245,14 +239,13 @@ export default function NotificationDropdown() {
                 )}
             </div>
 
-            {/* Footer */}
             {notifications.length > 0 && (
                 <div className="p-2 border-t border-slate-100 bg-slate-50">
                     <button
                         onClick={() => setNotifications([])}
                         className="w-full py-2 text-xs text-center text-slate-500 hover:text-slate-800 font-medium hover:bg-slate-200/50 rounded-lg transition-colors"
                     >
-                        مسح الكل
+                        {t('notifications.clear_all')}
                     </button>
                 </div>
             )}

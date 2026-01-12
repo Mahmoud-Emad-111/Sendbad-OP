@@ -11,7 +11,7 @@ interface OdooIntegrationInterface
      * @param string $phone
      * @return array|null
      */
-    public function findCustomerByPhone(string $phone): ?array;
+    public function findCustomerByPhoneOrName(string $phone, string $name): ?array;
 
     /**
      * Get customer orders and financial status from Odoo.

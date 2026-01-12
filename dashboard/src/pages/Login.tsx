@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Phone } from 'lucide-react';
 import { authService } from '../services/auth';
+import { useTranslation } from 'react-i18next';
 
 export default function Login() {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -19,10 +21,10 @@ export default function Login() {
         if (res.success) {
             navigate('/dashboard');
         } else {
-            setError(res.message || 'بيانات الدخول غير صحيحة');
+            setError(res.message || t('login.invalid_credentials'));
         }
     } catch (err) {
-        setError('حدث خطأ في الاتصال بالسيرفر');
+        setError(t('login.server_error'));
         console.error(err);
     } finally {
         setLoading(false);
@@ -30,12 +32,12 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4" dir="rtl">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4" dir={i18n.dir()}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
         <div className="p-8">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-slate-900 mb-2">تسجيل الدخول</h1>
-            <p className="text-slate-500">لوحة تحكم الإدارة</p>
+            <h1 className="text-2xl font-bold text-slate-900 mb-2">{t('login.title')}</h1>
+            <p className="text-slate-500">{t('login.subtitle')}</p>
           </div>
 
           {error && (
@@ -46,32 +48,33 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">رقم الهاتف</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">{t('common.phone')}</label>
               <div className="relative">
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 right-0 rtl:right-auto rtl:left-0 pr-3 rtl:pl-3 flex items-center pointer-events-none text-slate-400">
                   <Phone size={18} />
                 </div>
                 <input
                   type="text"
                   required
-                  className="block w-full pr-10 pl-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                  className="block w-full pr-10 pl-3 py-2 rtl:pl-10 rtl:pr-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
                   placeholder="+968 ..."
                   value={formData.phone}
                   onChange={e => setFormData({...formData, phone: e.target.value})}
+                  dir="ltr"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">كلمة المرور</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">{t('common.password')}</label>
               <div className="relative">
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 right-0 rtl:right-auto rtl:left-0 pr-3 rtl:pl-3 flex items-center pointer-events-none text-slate-400">
                   <Lock size={18} />
                 </div>
                 <input
                   type="password"
                   required
-                  className="block w-full pr-10 pl-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                  className="block w-full pr-10 pl-3 py-2 rtl:pl-10 rtl:pr-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
                   placeholder="********"
                   value={formData.password}
                   onChange={e => setFormData({...formData, password: e.target.value})}
@@ -84,7 +87,7 @@ export default function Login() {
               disabled={loading}
               className="w-full bg-slate-900 text-white py-2.5 rounded-lg hover:bg-slate-800 transition-colors font-medium shadow-lg shadow-slate-900/20 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              {loading ? 'جاري التحقق...' : 'دخول'}
+              {loading ? t('login.verifying') : t('login.login_btn')}
             </button>
           </form>
         </div>

@@ -5,8 +5,9 @@ import { Calendar, User, Settings, AlertCircle, CheckCircle, Clock, MapPin, Arro
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import clsx from 'clsx';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { useTranslation } from 'react-i18next';
 
-const API_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace('/api', '');
+const API_URL = (import.meta.env.VITE_API_BASE_URL || 'https://back.sindbad.om/public/api').replace('/api', '');
 
 const containerStyle = {
     width: '100%',
@@ -22,6 +23,7 @@ const mapOptions = {
 };
 
 export default function InstallationRequestDetails() {
+    const { t, i18n } = useTranslation();
     const { id } = useParams();
     const navigate = useNavigate();
     const [request, setRequest] = useState<any>(null);
@@ -30,6 +32,11 @@ export default function InstallationRequestDetails() {
     const [updating, setUpdating] = useState(false);
     const [newStatus, setNewStatus] = useState('');
     const [sendNotification, setSendNotification] = useState(true);
+
+    // Assign Technician State
+    const [assignModal, setAssignModal] = useState(false);
+    const [technicians, setTechnicians] = useState([]);
+    const [selectedTech, setSelectedTech] = useState<number | null>(null);
 
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
@@ -54,23 +61,23 @@ export default function InstallationRequestDetails() {
     };
 
     if (loading) return <LoadingSpinner />;
-    if (!request) return <div className="p-8 text-center text-red-500">الطلب غير موجود</div>;
+    if (!request) return <div className="p-8 text-center text-red-500">{t('request_details.not_found')}</div>;
 
     const StatusBadge = ({ status }: { status: string }) => {
         const styles: any = {
-            pending: { bg: 'bg-amber-100', text: 'text-amber-700', label: 'قيد الانتظار', icon: Clock },
-            assigned: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'تم الإسناد', icon: User },
-            on_way: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'في الطريق', icon: Clock },
-            in_progress: { bg: 'bg-indigo-100', text: 'text-indigo-700', label: 'جاري العمل', icon: Settings },
-            completed: { bg: 'bg-green-100', text: 'text-green-700', label: 'مكتمل', icon: CheckCircle },
-            canceled: { bg: 'bg-red-100', text: 'text-red-700', label: 'ملغي', icon: AlertCircle },
+            pending: { bg: 'bg-amber-100', text: 'text-amber-700', icon: Clock },
+            assigned: { bg: 'bg-blue-100', text: 'text-blue-700', icon: User },
+            on_way: { bg: 'bg-purple-100', text: 'text-purple-700', icon: Clock },
+            in_progress: { bg: 'bg-indigo-100', text: 'text-indigo-700', icon: Settings },
+            completed: { bg: 'bg-green-100', text: 'text-green-700', icon: CheckCircle },
+            canceled: { bg: 'bg-red-100', text: 'text-red-700', icon: AlertCircle },
         };
         const config = styles[status] || styles.pending;
         const Icon = config.icon;
         return (
             <span className={clsx("flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold", config.bg, config.text)}>
                 <Icon size={16} />
-                {config.label}
+                {t(`status.${status}`)}
             </span>
         );
     };
@@ -84,14 +91,6 @@ export default function InstallationRequestDetails() {
         if (!newStatus) return;
         setUpdating(true);
         try {
-            // Note: Installation Request Status Update might need different endpoint or same logic?
-            // Since InstallationRequestController doesn't have updateStatus yet, I mapped it in routes?
-            // Actually, I did NOT add updateStatus generic API for InstallationRequestController in previous steps.
-            // I only added index, store, show.
-            // I need to add updateStatus to InstallationRequestController!
-            // Assuming for now it works like service requests, but endpoint/controller is distinct.
-            // I better add the method to controller quickly or use a generic one.
-            // Let's assume I will add it. I'll make the call here first.
             const res = await api.post(`/installation-requests/${request.id}/status`, {
                 status: newStatus,
                 send_notification: sendNotification
@@ -99,16 +98,46 @@ export default function InstallationRequestDetails() {
             if (res.data.success) {
                 setRequest(res.data.data);
                 setStatusModal(false);
-                alert('تم تحديث الحالة بنجاح');
+                alert(t('request_details.update_success'));
             }
         } catch (error) {
-            alert('حدث خطأ أثناء التحديث');
+            alert(t('request_details.update_error'));
         } finally {
             setUpdating(false);
         }
     };
 
-    // Note: fields like product_type are direct properties now, not inside details
+    const fetchTechnicians = async () => {
+        try {
+            const res = await api.get('/admin/users?role=technician');
+            if (res.data.success) {
+                setTechnicians(res.data.data);
+                setAssignModal(true);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleAssign = async () => {
+        if (!selectedTech) return;
+        setUpdating(true);
+        try {
+            const res = await api.post(`/installation-requests/${id}/assign`, {
+                technician_id: selectedTech
+            });
+            if (res.data.success) {
+                setRequest(res.data.data);
+                setAssignModal(false);
+                alert(t('requests.assigned_success') || 'Technician Assigned Successfully');
+            }
+        } catch (error) {
+            alert(t('common.error') || 'Error assigning technician');
+        } finally {
+            setUpdating(false);
+        }
+    };
+
     return (
         <div className="space-y-6 max-w-7xl mx-auto pb-10">
             {/* Header */}
@@ -118,28 +147,34 @@ export default function InstallationRequestDetails() {
                         onClick={() => navigate(-1)}
                         className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
                     >
-                        <ArrowRight size={20} className="text-slate-600" />
+                        <ArrowRight size={20} className="text-slate-600 rtl:rotate-180" />
                     </button>
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                            طلب تركيب #{request.id}
+                            {t('request_details.installation_title', {id: request.id})}
                             <StatusBadge status={request.status} />
                         </h1>
                         <div className="text-slate-500 flex items-center gap-2 text-sm mt-1">
                             <Clock size={14} />
-                            تم الإنشاء: {new Date(request.created_at).toLocaleDateString()}
+                            {t('request_details.created_at')} {new Date(request.created_at).toLocaleDateString(i18n.language)}
                         </div>
                     </div>
                 </div>
 
                 <div className="flex gap-2">
-                     {/* Technician Assign Button could be added here similar to ServiceRequests */}
+                    <button
+                        onClick={fetchTechnicians}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                    >
+                        <User size={18} />
+                        {t('requests.assign_technician')}
+                    </button>
                     <button
                         onClick={() => setStatusModal(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors shadow-sm"
                     >
                         <Settings size={18} />
-                        تغيير الحالة
+                        {t('request_details.change_status')}
                     </button>
                 </div>
             </div>
@@ -151,32 +186,33 @@ export default function InstallationRequestDetails() {
                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                         <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
                             <Package size={20} className="text-purple-500" />
-                            بيانات التركيب
+                            {t('request_details.installation_data')}
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <div className="text-sm text-slate-500 mb-1">نوع المنتج</div>
+                                <div className="text-sm text-slate-500 mb-1">{t('new_request.product_type')}</div>
                                 <div className="font-semibold text-slate-900">{request.product_type}</div>
                             </div>
                             <div>
-                                <div className="text-sm text-slate-500 mb-1">الكمية</div>
+                                <div className="text-sm text-slate-500 mb-1">{t('common.quantity')}</div>
                                 <div className="font-semibold text-slate-900">{request.quantity}</div>
                             </div>
                             <div className="md:col-span-2">
-                                <div className="text-sm text-slate-500 mb-1">حالة الموقع</div>
+                                <div className="text-sm text-slate-500 mb-1">{t('request_details.site_status')}</div>
                                 <div className="flex items-center gap-2">
                                     <span className={clsx("px-2 py-1 rounded text-xs font-bold", request.is_site_ready ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
-                                        {request.is_site_ready ? 'جاهز للتركيب' : 'غير جاهز'}
+                                        {request.is_site_ready ? t('request_details.ready') : t('request_details.not_ready')}
                                     </span>
                                 </div>
                             </div>
                             {request.readiness_details && request.readiness_details.length > 0 && (
                                 <div className="md:col-span-2">
-                                    <div className="text-sm text-slate-500 mb-2">التجهيزات المكتملة</div>
+                                    <div className="text-sm text-slate-500 mb-2">{t('new_request.completed_preparations')}</div>
                                     <div className="flex flex-wrap gap-2">
                                         {request.readiness_details.map((item: string, idx: number) => (
                                             <span key={idx} className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs border border-slate-200">
-                                                {item}
+                                                {/* Try to translate item if it's a key, otherwise show as is */}
+                                                {t(`new_request.readiness_options.${item}`) !== `new_request.readiness_options.${item}` ? t(`new_request.readiness_options.${item}`) : item}
                                             </span>
                                         ))}
                                     </div>
@@ -184,7 +220,7 @@ export default function InstallationRequestDetails() {
                             )}
                             {request.notes && (
                                 <div className="md:col-span-2">
-                                    <div className="text-sm text-slate-500 mb-1">ملاحظات إضافية</div>
+                                    <div className="text-sm text-slate-500 mb-1">{t('new_request.additional_notes')}</div>
                                     <div className="text-slate-700 text-sm bg-slate-50 p-3 rounded-lg border border-slate-100 italic">
                                         "{request.notes}"
                                     </div>
@@ -197,7 +233,7 @@ export default function InstallationRequestDetails() {
                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                         <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
                             <MapPin size={20} className="text-blue-500" />
-                            موقع العميل
+                            {t('request_details.client_location')}
                         </h2>
                         {request.latitude && request.longitude ? (
                              isLoaded ? (
@@ -213,12 +249,12 @@ export default function InstallationRequestDetails() {
                                 </div>
                              ) : (
                                  <div className="h-[400px] bg-slate-100 rounded-xl flex items-center justify-center text-slate-500">
-                                     جاري تحميل الخريطة...
+                                     {t('common.loading_map')}
                                  </div>
                              )
                         ) : (
                             <div className="h-[200px] bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 border border-dashed border-slate-200">
-                                لا يوجد موقع مسجل لهذا الطلب
+                                {t('request_details.no_location')}
                             </div>
                         )}
                         <div className="mt-4 text-slate-600 text-sm flex items-start gap-2 bg-blue-50 p-3 rounded-lg">
@@ -229,7 +265,7 @@ export default function InstallationRequestDetails() {
 
                     {/* Images Gallery */}
                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <h2 className="text-lg font-bold text-slate-900 mb-4">المرفقات والصور</h2>
+                        <h2 className="text-lg font-bold text-slate-900 mb-4">{t('request_details.attachments')}</h2>
                          {request.attachments && request.attachments.length > 0 ? (
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                 {request.attachments.map((img: any) => (
@@ -245,14 +281,14 @@ export default function InstallationRequestDetails() {
                                             rel="noreferrer"
                                             className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-medium"
                                         >
-                                            تكبير الصورة
+                                            {t('request_details.view_image')}
                                         </a>
                                     </div>
                                 ))}
                             </div>
                         ) : (
                             <div className="text-center py-8 bg-slate-50 rounded-lg text-slate-400 text-sm border border-dashed border-slate-200">
-                                لا يوجد صور مرفقة
+                                {t('request_details.no_images')}
                             </div>
                         )}
                     </div>
@@ -262,7 +298,7 @@ export default function InstallationRequestDetails() {
                 <div className="space-y-6">
                     {/* Client Info */}
                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <h2 className="text-lg font-bold text-slate-900 mb-4">بيانات العميل</h2>
+                        <h2 className="text-lg font-bold text-slate-900 mb-4">{t('request_details.client_info')}</h2>
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xl">
                                 {request.user?.name.charAt(0)}
@@ -276,22 +312,22 @@ export default function InstallationRequestDetails() {
                             onClick={() => navigate(`/dashboard/users/${request.user?.id}`)}
                             className="w-full py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors text-sm font-medium"
                         >
-                            عرض ملف العميل
+                            {t('request_details.view_client_profile')}
                         </button>
                     </div>
 
                     {/* Schedule Info */}
                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <h2 className="text-lg font-bold text-slate-900 mb-4">تفاصيل الموعد</h2>
+                        <h2 className="text-lg font-bold text-slate-900 mb-4">{t('request_details.schedule_details')}</h2>
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">
                                     <Calendar size={20} />
                                 </div>
                                 <div>
-                                    <div className="text-xs text-slate-500">التاريخ</div>
+                                    <div className="text-xs text-slate-500">{t('common.date')}</div>
                                     <div className="font-medium text-slate-900" dir="ltr">
-                                        {new Date(request.scheduled_at).toLocaleDateString()}
+                                        {new Date(request.scheduled_at).toLocaleDateString(i18n.language)}
                                     </div>
                                 </div>
                             </div>
@@ -300,9 +336,9 @@ export default function InstallationRequestDetails() {
                                     <Clock size={20} />
                                 </div>
                                 <div>
-                                    <div className="text-xs text-slate-500">الوقت</div>
+                                    <div className="text-xs text-slate-500">{t('common.time')}</div>
                                     <div className="font-medium text-slate-900" dir="ltr">
-                                        {new Date(request.scheduled_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                        {new Date(request.scheduled_at).toLocaleTimeString(i18n.language, {hour: '2-digit', minute:'2-digit'})}
                                     </div>
                                 </div>
                             </div>
@@ -311,7 +347,7 @@ export default function InstallationRequestDetails() {
 
                     {/* Technician Info */}
                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <h2 className="text-lg font-bold text-slate-900 mb-4">الفني المسؤول</h2>
+                        <h2 className="text-lg font-bold text-slate-900 mb-4">{t('request_details.technician_assigned')}</h2>
                         {request.technician ? (
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center font-bold">
@@ -324,7 +360,7 @@ export default function InstallationRequestDetails() {
                             </div>
                         ) : (
                             <div className="text-center py-4 text-slate-400 text-sm">
-                                لم يتم تعيين فني بعد
+                                {t('request_details.no_technician')}
                             </div>
                         )}
                     </div>
@@ -332,25 +368,25 @@ export default function InstallationRequestDetails() {
             </div>
 
              {/* Status Update Modal */}
-             {statusModal && (
+            {statusModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
-                        <h2 className="text-xl font-bold mb-4">تحديث حالة الطلب</h2>
+                        <h2 className="text-xl font-bold mb-4">{t('request_details.update_status_modal')}</h2>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">الحالة الجديدة</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">{t('request_details.new_status')}</label>
                                 <select
                                     className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
                                     value={newStatus}
                                     onChange={e => setNewStatus(e.target.value)}
                                 >
-                                    <option value="">-- اختر الحالة --</option>
-                                    <option value="pending">قيد الانتظار</option>
-                                    <option value="assigned">تم الإسناد</option>
-                                    <option value="on_way">الفني في الطريق</option>
-                                    <option value="in_progress">جاري التنفيذ</option>
-                                    <option value="completed">مكتمل</option>
-                                    <option value="canceled">ملغي</option>
+                                    <option value="">{t('request_details.select_status')}</option>
+                                    <option value="pending">{t('status.pending')}</option>
+                                    <option value="assigned">{t('status.assigned')}</option>
+                                    <option value="on_way">{t('status.on_way')}</option>
+                                    <option value="in_progress">{t('status.in_progress')}</option>
+                                    <option value="completed">{t('status.completed')}</option>
+                                    <option value="canceled">{t('status.canceled')}</option>
                                 </select>
                             </div>
 
@@ -363,7 +399,7 @@ export default function InstallationRequestDetails() {
                                     onChange={e => setSendNotification(e.target.checked)}
                                 />
                                 <label htmlFor="notifyClient" className="text-sm font-medium text-slate-700 select-none cursor-pointer">
-                                    إرسال إشعار للعميل بالتحديث
+                                    {t('request_details.notify_client')}
                                 </label>
                             </div>
 
@@ -372,14 +408,65 @@ export default function InstallationRequestDetails() {
                                     onClick={() => setStatusModal(false)}
                                     className="flex-1 py-2 text-slate-600 hover:bg-slate-50 rounded-lg"
                                 >
-                                    إلغاء
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     onClick={handleUpdateStatus}
                                     disabled={!newStatus || updating}
                                     className="flex-1 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 disabled:opacity-50"
                                 >
-                                    {updating ? 'جاري التحديث...' : 'حفظ التغييرات'}
+                                    {updating ? t('common.updating') : t('common.save_changes')}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Assign Technician Modal */}
+            {assignModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+                        <h2 className="text-xl font-bold mb-4">{t('requests.assign_technician')}</h2>
+                        <div className="space-y-4">
+                            {technicians.length === 0 ? (
+                                <div className="text-center text-slate-500 py-4">{t('technicians.no_techs')}</div>
+                            ) : (
+                                <div className="space-y-2 max-h-60 overflow-y-auto">
+                                    {technicians.map((tech: any) => (
+                                        <div
+                                            key={tech.id}
+                                            onClick={() => setSelectedTech(tech.id)}
+                                            className={clsx(
+                                                "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                                                selectedTech === tech.id ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:bg-slate-50"
+                                            )}
+                                        >
+                                            <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center font-bold text-slate-600">
+                                                {tech.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <div className="font-medium text-slate-900">{tech.name}</div>
+                                                <div className="text-xs text-slate-500">{tech.phone}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="flex gap-3 mt-6 pt-4 border-t border-slate-100">
+                                <button
+                                    onClick={() => setAssignModal(false)}
+                                    className="flex-1 py-2 text-slate-600 hover:bg-slate-50 rounded-lg"
+                                >
+                                    {t('common.cancel')}
+                                </button>
+                                <button
+                                    onClick={handleAssign}
+                                    disabled={!selectedTech || updating}
+                                    className="flex-1 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 disabled:opacity-50"
+                                >
+                                    {updating ? t('common.saving') : t('common.confirm')}
                                 </button>
                             </div>
                         </div>

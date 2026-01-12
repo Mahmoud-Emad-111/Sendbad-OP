@@ -62,7 +62,7 @@ class OdooService implements OdooIntegrationInterface
         throw new Exception('Odoo Authentication Failed: ' . json_encode($result));
     }
 
-    public function findCustomerByPhone(string $phone): ?array
+    public function findCustomerByPhoneOrName(string $phone, string $name): ?array
     {
         try {
             // We use the 'execute_kw' method as specified in your requirements
@@ -80,11 +80,12 @@ class OdooService implements OdooIntegrationInterface
                  $formattedPhone = substr($phone, 0, 3) . ' ' . substr($phone, 3, 4) . ' ' . substr($phone, 7);
             }
 
-            // Using '|' (OR) operator to search for raw input OR formatted version
+            // Using '|' (OR) operator to search for raw input OR formatted version OR Name
             $domain = [
-                '|',
+                '|', '|',
                 ['phone', 'ilike', $phone],
-                ['phone', 'ilike', $formattedPhone]
+                ['phone', 'ilike', $formattedPhone],
+                ['name', 'ilike', $name]
             ];
 
             $response = Http::post($this->url . '/jsonrpc', [
@@ -216,31 +217,11 @@ class OdooService implements OdooIntegrationInterface
            // Strict Implementation of User's JSON Query
            // 1. Domain: [['project_id', '!=', false], ['partner_id.phone', '=', '+968 XXXX XXXX']]
 
-            $domain = [['project_id', '!=', false]];
-
-            if ($phone) {
-                // FORCE Format: +968 9999 8888
-                $digits = preg_replace('/[^0-9]/', '', $phone);
-
-                // If it looks like a local mobile (8 digits), prepend 968
-                if (strlen($digits) == 8) {
-                    $digits = '968' . $digits;
-                }
-
-                // If it is 11 digits starting with 968, format it
-                if (strlen($digits) == 11 && str_starts_with($digits, '968')) {
-                    $formatted = '+' . substr($digits, 0, 3) . ' ' . substr($digits, 3, 4) . ' ' . substr($digits, 7);
-                } else {
-                     $formatted = $phone;
-                }
-
-                // User used "=" in their example, implying exact match.
-                // We will use that exact format.
-                $domain[] = ['partner_id.phone', '=', $formatted];
-            } else {
-                // Fallback (should not happen in this flow)
-                $domain[] = ['partner_id', 'child_of', $odooId];
-            }
+            // Simplified Domain: Fetch ALL orders for this partner (and their contacts)
+            // We trust the $odooId passed from the controller (found via phone/name match)
+            $domain = [
+                ['partner_id', 'child_of', $odooId]
+            ];
 
             $response = Http::post($this->url . '/jsonrpc', [
                 'jsonrpc' => '2.0',

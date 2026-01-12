@@ -21,7 +21,7 @@ class AuthService
      */
     public function validateOdooUser(string $phone): array
     {
-        $customer = $this->odoo->findCustomerByPhone($phone);
+        $customer = $this->odoo->findCustomerByPhoneOrName($phone, '');
 
         if (!$customer) {
             throw ValidationException::withMessages([

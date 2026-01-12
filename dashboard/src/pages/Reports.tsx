@@ -3,8 +3,10 @@ import api from '../services/auth';
 import { BarChart, Star, Clock, Trophy, TrendingUp, Users } from 'lucide-react';
 import clsx from 'clsx';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { useTranslation } from 'react-i18next';
 
 export default function Reports() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -34,8 +36,8 @@ export default function Reports() {
             <BarChart size={28} />
         </div>
         <div>
-            <h1 className="text-2xl font-bold text-slate-900">تقارير الأداء</h1>
-            <p className="text-slate-500">تحليل أداء الفنيين ورضا العملاء</p>
+            <h1 className="text-2xl font-bold text-slate-900">{t('reports.title')}</h1>
+            <p className="text-slate-500">{t('reports.subtitle')}</p>
         </div>
       </div>
 
@@ -43,9 +45,9 @@ export default function Reports() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
             <div>
-                <p className="text-slate-500 text-sm mb-1">متوسط سرعة الإنجاز</p>
+                <p className="text-slate-500 text-sm mb-1">{t('reports.avg_completion_time')}</p>
                 <div className="text-3xl font-bold text-slate-900 flex items-center gap-1">
-                    {stats?.avg_completion_hours} <span className="text-sm font-normal text-slate-500">ساعة</span>
+                    {stats?.avg_completion_hours} <span className="text-sm font-normal text-slate-500">{t('reports.hours')}</span>
                 </div>
             </div>
             <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
@@ -54,7 +56,7 @@ export default function Reports() {
         </div>
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
             <div>
-                <p className="text-slate-500 text-sm mb-1">أعلى تقييم</p>
+                <p className="text-slate-500 text-sm mb-1">{t('reports.highest_rating')}</p>
                 <div className="text-3xl font-bold text-slate-900">
                     {stats?.top_technicians?.[0]?.avg_rating ? parseFloat(stats.top_technicians[0].avg_rating).toFixed(1) : '---'}
                 </div>
@@ -65,7 +67,7 @@ export default function Reports() {
         </div>
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
             <div>
-                <p className="text-slate-500 text-sm mb-1">إجمالي التقييمات</p>
+                <p className="text-slate-500 text-sm mb-1">{t('reports.total_ratings')}</p>
                 <div className="text-3xl font-bold text-slate-900">
                     {stats?.ratings_breakdown?.reduce((acc: number, curr: any) => acc + curr.count, 0) || 0}
                 </div>
@@ -81,7 +83,7 @@ export default function Reports() {
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
             <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                 <Trophy className="text-amber-500" size={20} />
-                أفضل الفنيين أداءً
+                {t('reports.top_technicians')}
             </h2>
             <div className="space-y-4">
                 {stats?.top_technicians?.map((tech: any, idx: number) => (
@@ -97,7 +99,7 @@ export default function Reports() {
                             </div>
                             <div>
                                 <h3 className="font-semibold text-slate-900">{tech.name}</h3>
-                                <p className="text-xs text-slate-500">{tech.completed_count} طلب مكتمل</p>
+                                <p className="text-xs text-slate-500">{tech.completed_count} {t('reports.completed_requests')}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm">
@@ -107,7 +109,7 @@ export default function Reports() {
                     </div>
                 ))}
                 {(!stats?.top_technicians || stats.top_technicians.length === 0) && (
-                    <p className="text-slate-500 text-center py-4">لا يوجد بيانات كافية</p>
+                    <p className="text-slate-500 text-center py-4">{t('reports.no_data')}</p>
                 )}
             </div>
         </div>
@@ -116,7 +118,7 @@ export default function Reports() {
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
             <h2 className="text-lg font-bold mb-6 flex items-center gap-2">
                 <Users className="text-blue-500" size={20} />
-                تحليل رضا العملاء
+                {t('reports.customer_satisfaction')}
             </h2>
             <div className="space-y-4">
                 {[5, 4, 3, 2, 1].map(stars => {

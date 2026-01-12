@@ -1,95 +1,47 @@
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  Users,
-  Map as MapIcon,
-  LogOut,
-  Settings,
-  Package,
-  TrendingUp,
-  ClipboardList
-} from 'lucide-react';
-import clsx from 'clsx';
-import { authService } from '../services/auth';
+import { useLocation, Outlet } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import Sidebar from '../components/Sidebar';
 import NotificationDropdown from '../components/NotificationDropdown';
-
-const SidebarItem = ({ icon: Icon, label, path, active }: any) => {
-  const navigate = useNavigate();
-  return (
-    <div
-      onClick={() => navigate(path)}
-      className={clsx(
-        "flex items-center gap-3 px-4 py-3 cursor-pointer transition-all rounded-lg mb-1 mx-2",
-        active
-          ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20"
-          : "text-slate-500 hover:bg-slate-100"
-      )}
-    >
-      <Icon size={20} />
-      <span className="font-medium text-sm">{label}</span>
-    </div>
-  );
-};
 
 export default function DashboardLayout() {
   const location = useLocation();
+  const { t, i18n } = useTranslation();
 
+  // We keep menuItems for the header title logic (duplicate for now, ideally centralized)
   const menuItems = [
-    { icon: LayoutDashboard, label: 'لوحة التحكم', path: '/dashboard' },
-    { icon: MapIcon, label: 'الخريطة الحية', path: '/dashboard/map' },
-    { icon: Users, label: 'المستخدمين', path: '/dashboard/users' },
-    { icon: LayoutDashboard, label: 'الفنيين', path: '/dashboard/technicians' },
-    { icon: Settings, label: 'طلبات الصيانه', path: '/dashboard/requests' },
-    { icon: ClipboardList, label: 'طلبات التركيب', path: '/dashboard/requests/installation' },
-    { icon: Package, label: 'المخزون', path: '/dashboard/inventory' },
-    { icon: TrendingUp, label: 'التقارير', path: '/dashboard/reports' },
-    { icon: Settings, label: 'الإعدادات', path: '/dashboard/settings' },
+    { label: t('common.dashboard'), path: '/dashboard' },
+    { label: t('common.live_map'), path: '/dashboard/map' },
+    { label: t('common.users'), path: '/dashboard/users' },
+    { label: t('common.technicians'), path: '/dashboard/technicians' },
+    { label: t('common.service_requests'), path: '/dashboard/requests' },
+    { label: t('common.installation_requests'), path: '/dashboard/requests/installation' },
+    { label: t('common.inventory'), path: '/dashboard/inventory' },
+    { label: t('common.reports'), path: '/dashboard/reports' },
+    { label: t('common.settings'), path: '/dashboard/settings' },
   ];
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans" dir="rtl">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-l border-slate-200 flex flex-col">
-        <div className="p-6 flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">S</div>
-            <h1 className="text-xl font-bold text-slate-900">Sindbad</h1>
-        </div>
-
-        <nav className="flex-1 mt-6">
-          {menuItems.map((item) => (
-            <SidebarItem
-              key={item.path}
-              {...item}
-              active={location.pathname === item.path}
-            />
-          ))}
-        </nav>
-
-        <div className="p-4 border-t border-slate-200">
-          <button
-            onClick={() => {
-                authService.logout();
-            }}
-            className="flex items-center gap-3 px-4 py-3 w-full text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-          >
-            <LogOut size={20} />
-            <span className="font-medium text-sm">تسجيل الخروج</span>
-          </button>
-        </div>
-      </aside>
+    <div className="flex h-screen bg-slate-50 font-sans" dir={i18n.dir()}>
+      <Sidebar />
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-10">
-          <h2 className="text-lg font-semibold text-slate-800">
-            {menuItems.find(m => m.path === location.pathname)?.label || 'الرئيسية'}
-          </h2>
+      <main className="flex-1 overflow-auto transition-all duration-300">
+        <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/60 flex items-center justify-between px-6 sticky top-0 z-10 shadow-sm">
+          <div className="flex items-center gap-2">
+             <h2 className="text-lg font-bold text-slate-800 tracking-tight">
+                {/* Dynamically get label from path, or fallback. Ideally we map again using i18n keys */}
+                {i18n.language === 'ar' ?
+                  (menuItems.find(m => m.path === location.pathname)?.label || t('common.dashboard')) :
+                  (menuItems.find(m => m.path === location.pathname)?.label || t('common.dashboard')) // Simplified for now, real label logic should be robust
+                }
+             </h2>
+          </div>
 
           <div className="flex items-center gap-4">
             {/* Notification Dropdown replacing static Bell */}
             <NotificationDropdown />
 
-            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold">
+            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm ring-1 ring-slate-100 bg-linear-to-tr from-blue-100 to-indigo-100 flex items-center justify-center text-blue-700 font-bold cursor-pointer hover:shadow-md transition-shadow">
               A
             </div>
           </div>
@@ -97,7 +49,6 @@ export default function DashboardLayout() {
 
         <div className="p-6">
           <Outlet />
-
         </div>
       </main>
     </div>
