@@ -122,6 +122,175 @@ class AdminController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Lookup user by phone and fetch Odoo data for Admin request creation
+     */
+    public function lookupUserByPhone(Request $request, $phone, \App\Services\Odoo\OdooService $odoo)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // 1. Find user by phone in database
+        $user = User::where('phone', $phone)->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found in database'
+            ], 404);
+        }
+
+        // 2. Fetch Odoo data
+        $odooPartner = $odoo->findCustomerByPhoneOrName($user->phone, $user->name);
+        $odooData = [
+            'linked' => false,
+            'orders' => []
+        ];
+
+        if ($odooPartner) {
+            $orders = $odoo->getCustomerOrders($odooPartner['id'], $user->phone, $user->name);
+            $odooData = [
+                'linked' => true,
+                'partner_id' => $odooPartner['id'],
+                'orders' => array_map(function($o) {
+                    return [
+                        'id' => $o['id'],
+                        'name' => $o['name'], // invoice_number
+                        'quotation_template' => is_array($o['sale_order_template_id'])
+                            ? $o['sale_order_template_id'][1]
+                            : null,
+                        'date' => $o['date_order']
+                    ];
+                }, $orders)
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'user' => $user,
+                'odoo' => $odooData
+            ]
+        ]);
+    }
+
+    /**
+     * Create service request on behalf of a user (Admin only)
+     */
+    public function createServiceRequest(Request $request)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'service_type' => 'required|string|in:maintenance,repair,inspection',
+            'description' => 'required|string',
+            'address' => 'nullable|string',
+            'description' => 'required|string',
+            'address' => 'nullable|string',
+            'scheduled_at' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:scheduled_at',
+            'invoice_number' => 'nullable|string',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120',
+        ]);
+
+        $serviceRequest = \App\Models\ServiceRequest::create([
+            'user_id' => $validated['user_id'],
+            'service_type' => $validated['service_type'],
+            'description' => $validated['description'],
+            'address' => $validated['address'] ?? '',
+            'scheduled_at' => $validated['scheduled_at'],
+            'end_date' => $validated['end_date'] ?? $validated['scheduled_at'], // Default to same day if not provided
+            'invoice_number' => isset($validated['invoice_number']) ? 'T-' . $validated['invoice_number'] : null,
+            'latitude' => $validated['latitude'] ?? null,
+            'longitude' => $validated['longitude'] ?? null,
+            'status' => 'pending',
+        ]);
+
+        // Handle image attachments
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $path = $image->store('request_attachments', 'public');
+                \App\Models\RequestAttachment::create([
+                    'request_id' => $serviceRequest->id,
+                    'file_path' => $path
+                ]);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Service request created successfully',
+            'data' => $serviceRequest->load(['user', 'attachments'])
+        ], 201);
+    }
+
+    /**
+     * Create installation request on behalf of a user (Admin only)
+     */
+    public function createInstallationRequest(Request $request)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'invoice_number' => 'nullable|string',
+            'product_type' => 'required|string',
+            'quantity' => 'nullable|integer|min:1',
+            'is_site_ready' => 'required|boolean',
+            'readiness_details' => 'nullable|json',
+            'readiness_details' => 'nullable|json',
+            'notes' => 'nullable|string',
+            'address' => 'nullable|string',
+            'scheduled_at' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:scheduled_at',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120',
+        ]);
+
+        $installationRequest = \App\Models\InstallationRequest::create([
+            'user_id' => $validated['user_id'],
+            'invoice_number' => isset($validated['invoice_number']) ? 'B-' . $validated['invoice_number'] : null,
+            'product_type' => $validated['product_type'],
+            'quantity' => $validated['quantity'] ?? 1,
+            'is_site_ready' => $validated['is_site_ready'],
+            'readiness_details' => $validated['readiness_details'] ? json_decode($validated['readiness_details'], true) : null,
+            'notes' => $validated['notes'] ?? null,
+            'address' => $validated['address'] ?? '',
+            'scheduled_at' => $validated['scheduled_at'],
+            'latitude' => $validated['latitude'] ?? null,
+            'longitude' => $validated['longitude'] ?? null,
+            'status' => 'pending',
+        ]);
+
+        // Handle image attachments
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $path = $image->store('installation_attachments', 'public');
+                \App\Models\RequestAttachment::create([
+                    'attachable_id' => $installationRequest->id,
+                    'attachable_type' => \App\Models\InstallationRequest::class,
+                    'file_path' => $path
+                ]);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Installation request created successfully',
+            'data' => $installationRequest->load(['user', 'attachments'])
+        ], 201);
+    }
+
     public function getPerformanceReports()
     {
         // 1. Top Technicians by Rating
@@ -156,6 +325,64 @@ class AdminController extends Controller
                 'avg_completion_hours' => round($completionStats->avg_hours_to_complete ?? 0, 1),
                 'ratings_breakdown' => $ratingsBreakdown
             ]
+        ]);
+    }
+
+    /**
+     * Get Available Technicians (Filtered by Date)
+     */
+    public function getAvailableTechnicians(Request $request)
+    {
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        if (!$startDate) {
+            return response()->json(['success' => false, 'message' => 'Start date is required'], 400);
+        }
+
+        if (!$endDate) {
+            $endDate = $startDate;
+        }
+
+        // 1. Get All Technicians
+        $technicians = \App\Models\User::where('role', 'technician')->get();
+
+        // 2. Filter out busy technicians
+        $availableTechnicians = $technicians->filter(function ($tech) use ($startDate, $endDate) {
+            // Check Service Requests
+            $busyService = \App\Models\ServiceRequest::where('technician_id', $tech->id)
+                ->whereIn('status', ['assigned', 'on_way', 'in_progress'])
+                ->where(function ($q) use ($startDate, $endDate) {
+                    $q->whereBetween('scheduled_at', [$startDate, $endDate])
+                      ->orWhereBetween('end_date', [$startDate, $endDate])
+                      ->orWhere(function ($sub) use ($startDate, $endDate) {
+                          $sub->where('scheduled_at', '<=', $startDate)
+                              ->where('end_date', '>=', $endDate);
+                      });
+                })
+                ->exists();
+
+            if ($busyService) return false;
+
+            // Check Installation Requests
+            $busyInstallation = \App\Models\InstallationRequest::where('technician_id', $tech->id)
+                ->whereIn('status', ['assigned', 'on_way', 'in_progress'])
+                ->where(function ($q) use ($startDate, $endDate) {
+                    $q->whereBetween('scheduled_at', [$startDate, $endDate])
+                      ->orWhereBetween('end_date', [$startDate, $endDate])
+                      ->orWhere(function ($sub) use ($startDate, $endDate) {
+                          $sub->where('scheduled_at', '<=', $startDate)
+                              ->where('end_date', '>=', $endDate);
+                      });
+                })
+                ->exists();
+
+            return !$busyInstallation;
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $availableTechnicians->values()
         ]);
     }
 }

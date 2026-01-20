@@ -130,6 +130,7 @@ export default function UserDetails() {
                                             <tr>
                                                 <th className="px-6 py-4 text-start">{t('user_details.request_id')}</th>
                                                 <th className="px-6 py-4 text-start">{t('user_details.service_type')}</th>
+                                                <th className="px-6 py-4 text-start">{t('requests.invoice_number')}</th>
                                                 <th className="px-6 py-4 text-start">{t('common.description')}</th>
                                                 <th className="px-6 py-4 text-start">{t('common.date')}</th>
                                                 <th className="px-6 py-4 text-start">{t('common.status')}</th>
@@ -146,6 +147,7 @@ export default function UserDetails() {
                                                     <td className="px-6 py-4 font-medium">
                                                         {t(`requests.types.${req.service_type}`) || req.service_type}
                                                     </td>
+                                                    <td className="px-6 py-4 font-mono text-sm text-slate-600">{req.invoice_number || '-'}</td>
                                                     <td className="px-6 py-4 text-slate-600 max-w-md truncate">{req.description}</td>
                                                     <td className="px-6 py-4 text-sm text-slate-500">{new Date(req.created_at).toLocaleDateString(i18next.language === 'ar' ? 'ar-EG' : 'en-US')}</td>
                                                     <td className="px-6 py-4">

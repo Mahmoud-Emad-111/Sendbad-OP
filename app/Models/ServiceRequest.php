@@ -16,6 +16,7 @@ class ServiceRequest extends Model
         'details', // JSON payload for dynamic fields
         'description',
         'scheduled_at',
+        'end_date',
         'address',
         'latitude',
         'longitude',
@@ -24,17 +25,19 @@ class ServiceRequest extends Model
         'review_comment',
         'completed_at',
         'task_start_time',
-        'task_end_time'
+        'task_end_time',
+        'invoice_number'
     ];
 
     protected $casts = [
-        'scheduled_at' => 'datetime',
+        'details' => 'array',
+        'scheduled_at' => 'date',
+        'end_date' => 'date',
         'completed_at' => 'datetime',
         'task_start_time' => 'datetime',
         'task_end_time' => 'datetime',
         'latitude' => 'float',
         'longitude' => 'float',
-        'details' => 'array',
     ];
 
     public function user()

@@ -15,6 +15,8 @@ import Reports from './pages/Reports';
 import NewInstallationRequest from './pages/NewInstallationRequest';
 import InstallationRequests from './pages/InstallationRequests';
 import InstallationRequestDetails from './pages/InstallationRequestDetails';
+import NewServiceRequest from './pages/NewServiceRequest';
+import NewAdminInstallationRequest from './pages/NewAdminInstallationRequest';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -33,6 +35,8 @@ function App() {
             <Route path="users" element={<Users />} />
             <Route path="users/:id" element={<UserDetails />} />
             <Route path="requests" element={<ServiceRequests />} />
+            <Route path="requests/new-service" element={<NewServiceRequest />} />
+            <Route path="requests/new-installation" element={<NewAdminInstallationRequest />} />
             <Route path="requests/new" element={<NewInstallationRequest />} />
             <Route path="requests/installation" element={<InstallationRequests />} />
             <Route path="requests/installation/:id" element={<InstallationRequestDetails />} />

@@ -8,6 +8,7 @@ class InstallationRequest extends Model
 {
     protected $fillable = [
         'user_id',
+        'invoice_number',
         'technician_id',
         'product_type',
         'quantity',
@@ -18,13 +19,15 @@ class InstallationRequest extends Model
         'longitude',
         'address',
         'scheduled_at',
+        'end_date',
         'status'
     ];
 
     protected $casts = [
         'is_site_ready' => 'boolean',
         'readiness_details' => 'array',
-        'scheduled_at' => 'datetime',
+        'scheduled_at' => 'date',
+        'end_date' => 'date',
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
     ];

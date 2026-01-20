@@ -7,7 +7,7 @@ import clsx from 'clsx';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useTranslation } from 'react-i18next';
 
-const API_URL = (import.meta.env.VITE_API_BASE_URL || 'https://back.sindbad.om/public/api').replace('/api', '');
+const API_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace('/api', '');
 
 const containerStyle = {
     width: '100%',

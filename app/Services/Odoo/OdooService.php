@@ -247,7 +247,8 @@ class OdooService implements OdooIntegrationInterface
                                 'amount_due',
                                 'amount_total',
                                 'invoice_status',
-                                'invoice_ids'
+                                'invoice_ids',
+                                'sale_order_template_id'
                             ],
                             'limit' => 50,
                             'order' => 'date_order desc'

@@ -21,10 +21,10 @@ export default function ServiceRequests() {
       date_to: ''
   });
 
-  const [assignModal, setAssignModal] = useState<{show: boolean, requestId: number | null}>({show: false, requestId: null});
-  const [viewModal, setViewModal] = useState<{show: boolean, request: any | null}>({show: false, request: null});
-  const [selectedTech, setSelectedTech] = useState('');
-  const [taskTimes, setTaskTimes] = useState({ start: '', end: '' });
+    const [assignModal, setAssignModal] = useState<{show: boolean, requestId: number | null}>({show: false, requestId: null});
+    const [assignDates, setAssignDates] = useState({ start: '', end: '' });
+    const [selectedTech, setSelectedTech] = useState('');
+    const [viewModal, setViewModal] = useState<{show: boolean, request: any | null}>({show: false, request: null});
 
   // ... inside component ...
   const [userRole, setUserRole] = useState<string>('');
@@ -40,12 +40,9 @@ export default function ServiceRequests() {
 
   useEffect(() => {
     if (userRole === 'admin') {
-        loadTechnicians();
+        // loadTechnicians(); // This will be replaced by fetchTechnicians
     }
   }, [userRole]);
-
-  // ... (rest of code)
-
 
   // Debounced load for search
   useEffect(() => {
@@ -96,36 +93,72 @@ export default function ServiceRequests() {
   };
 
   // ... rest of loadTechnicians ...
-  const loadTechnicians = async () => {
+    const fetchTechnicians = async (startDate?: string, endDate?: string) => {
         try {
-            const res = await api.get('/admin/users?role=technician');
+            // Find current request to get default dates if not provided
+            let sDate = startDate;
+            let eDate = endDate;
+
+            if (assignModal.requestId && (!sDate || !eDate)) {
+                 const req = requests.find(r => r.id === assignModal.requestId);
+                 if (req) {
+                     sDate = sDate || req.scheduled_at;
+                     eDate = eDate || req.end_date || req.scheduled_at;
+                 }
+            }
+
+            const res = await api.get('/admin/technicians/available', {
+                params: {
+                   start_date: sDate,
+                   end_date: eDate
+                }
+            });
             if (res.data.success) {
                 setTechnicians(res.data.data);
             }
         } catch (error) {
-            console.error("Failed to load techs", error);
+            console.error(error);
         }
-  };
+    };
 
-  const handleAssign = async () => {
-    if (!selectedTech || !assignModal.requestId) return;
+    const handleAssignClick = (req: any) => {
+        const sDate = req.scheduled_at ? new Date(req.scheduled_at).toISOString().split('T')[0] : '';
+        const eDate = req.end_date ? new Date(req.end_date).toISOString().split('T')[0] : sDate;
 
-    try {
-        const res = await api.post(`/admin/requests/${assignModal.requestId}/assign`, {
-            technician_id: selectedTech,
-            task_start_time: taskTimes.start || null,
-            task_end_time: taskTimes.end || null
-        });
-        if (res.data.success) {
-            alert('تم إسناد الطلب بنجاح');
-            setAssignModal({show: false, requestId: null});
-            setSelectedTech('');
-            loadRequests();
+        setAssignDates({ start: sDate, end: eDate });
+        setAssignModal({show: true, requestId: req.id});
+        fetchTechnicians(sDate, eDate);
+    };
+
+    const handleDateChange = (key: 'start' | 'end', value: string) => {
+         setAssignDates(prev => {
+            const newDates = { ...prev, [key]: value };
+            if (key === 'start' && newDates.end && value > newDates.end) {
+                newDates.end = value;
+            }
+            fetchTechnicians(newDates.start, newDates.end);
+            return newDates;
+         });
+    };
+
+    const handleAssign = async () => {
+        if (!selectedTech || !assignModal.requestId) return;
+
+        try {
+            const res = await api.post(`/admin/requests/${assignModal.requestId}/assign`, {
+                technician_id: selectedTech,
+                scheduled_at: assignDates.start, // Send Date Only
+                end_date: assignDates.end       // Send Date Only
+            });
+            if (res.data.success) {
+                toast.success(t('requests.assign_success'));
+                setAssignModal({show: false, requestId: null});
+                loadRequests();
+            }
+        } catch (error) {
+            toast.error(t('requests.assign_error'));
         }
-    } catch (error) {
-        alert('حدث خطأ أثناء الإسناد');
-    }
-  };
+    };
 
   const StatusBadge = ({ status }: { status: string }) => {
       const styles: any = {
@@ -156,7 +189,7 @@ export default function ServiceRequests() {
           <p className="text-slate-500">{t('requests.subtitle')}</p>
         </div>
         <button
-            onClick={() => window.location.href = "/dashboard/requests/new"}
+            onClick={() => window.location.href = "/dashboard/requests/new-service"}
             className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl transition-colors font-medium shadow-sm hover:shadow-md"
         >
             <span>+</span>
@@ -268,6 +301,7 @@ export default function ServiceRequests() {
                         <th className="px-6 py-4 text-start">{t('user_details.request_id')}</th>
                         <th className="px-6 py-4 text-start">{t('common.name')}</th>
                         <th className="px-6 py-4 text-start">{t('user_details.service_type')}</th>
+                        <th className="px-6 py-4 text-start">{t('requests.invoice_number')}</th>
                         <th className="px-6 py-4 text-start">{t('common.address')}</th>
                         <th className="px-6 py-4 text-start">{t('requests.scheduled_at')}</th>
                         <th className="px-6 py-4 text-start">{t('common.status')}</th>
@@ -288,6 +322,7 @@ export default function ServiceRequests() {
                                 <td className="px-6 py-4 text-slate-600">
                                     {t(`requests.types.${req.service_type}`) || req.service_type}
                                 </td>
+                                <td className="px-6 py-4 font-mono text-sm text-slate-600">{req.invoice_number || '-'}</td>
                                 <td className="px-6 py-4 text-slate-500 truncate max-w-xs" title={req.address}>{req.address}</td>
                                 <td className="px-6 py-4 text-slate-600">
                                     <div className="flex items-center gap-1.5 text-xs bg-slate-100 px-2 py-1 rounded w-fit">
@@ -317,8 +352,8 @@ export default function ServiceRequests() {
                                     </button>
                                     {req.status === 'pending' && userRole === 'admin' && (
                                         <button
-                                            onClick={() => setAssignModal({show: true, requestId: req.id})}
-                                            className="text-xs bg-slate-900 text-white px-3 py-1.5 rounded hover:bg-slate-800 transition-colors"
+                                            onClick={() => handleAssignClick(req)}
+                                            className="text-xs bg-slate-900 text-white px-3 py-1.5 rounded hover:bg-slate-800 transition-colors ml-2"
                                         >
                                             {t('requests.assign_technician')}
                                         </button>
@@ -363,6 +398,11 @@ export default function ServiceRequests() {
                             <div>
                                 <h3 className="text-sm font-medium text-slate-500 mb-1">{t('user_details.service_type')}</h3>
                                 <div className="font-semibold text-slate-900">{t(`requests.types.${viewModal.request.service_type}`) || viewModal.request.service_type}</div>
+                            </div>
+
+                            <div>
+                                <h3 className="text-sm font-medium text-slate-500 mb-1">{t('requests.invoice_number')}</h3>
+                                <div className="font-mono text-slate-900">{viewModal.request.invoice_number || '-'}</div>
                             </div>
                         </div>
 
@@ -481,21 +521,22 @@ export default function ServiceRequests() {
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">وقت البدء (اختياري)</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">{t('requests.scheduled_at')}</label>
                             <input
-                                type="datetime-local"
+                                type="date"
                                 className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                value={taskTimes.start}
-                                onChange={e => setTaskTimes({...taskTimes, start: e.target.value})}
+                                value={assignDates.start}
+                                onChange={e => handleDateChange('start', e.target.value)}
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">وقت التسليم المتوقع</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">{t('requests.end_date')}</label>
                             <input
-                                type="datetime-local"
+                                type="date"
                                 className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                value={taskTimes.end}
-                                onChange={e => setTaskTimes({...taskTimes, end: e.target.value})}
+                                value={assignDates.end}
+                                min={assignDates.start}
+                                onChange={e => handleDateChange('end', e.target.value)}
                             />
                         </div>
                     </div>

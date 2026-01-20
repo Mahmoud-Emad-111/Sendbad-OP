@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/auth';
-import { Calendar, User, Settings, AlertCircle, CheckCircle, Clock, MapPin, ArrowRight, Package } from 'lucide-react';
+import { Calendar, User, Settings, AlertCircle, CheckCircle, Clock, MapPin, ArrowRight, Package, X } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import clsx from 'clsx';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useTranslation } from 'react-i18next';
 
-const API_URL = (import.meta.env.VITE_API_BASE_URL || 'https://back.sindbad.om/public/api').replace('/api', '');
+const API_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace('/api', '');
 
 const containerStyle = {
     width: '100%',
@@ -28,15 +28,64 @@ export default function InstallationRequestDetails() {
     const navigate = useNavigate();
     const [request, setRequest] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [statusModal, setStatusModal] = useState(false);
     const [updating, setUpdating] = useState(false);
     const [newStatus, setNewStatus] = useState('');
     const [sendNotification, setSendNotification] = useState(true);
 
     // Assign Technician State
+    const [statusModal, setStatusModal] = useState(false);
     const [assignModal, setAssignModal] = useState(false);
+    const [assignDates, setAssignDates] = useState({ start: '', end: '' });
     const [technicians, setTechnicians] = useState([]);
     const [selectedTech, setSelectedTech] = useState<number | null>(null);
+
+    // Readiness Details State
+    const [readinessModal, setReadinessModal] = useState(false);
+    const [readinessDetails, setReadinessDetails] = useState({
+        product_status: false,
+        order_status: false
+    });
+    const productStatusOptions = ['quartz', 'appliances', 'order'];
+    const orderStatusDetails = ['in_stock', 'shipping', 'production', 'on_site'];
+
+     const handleUpdateReadiness = async () => {
+        try {
+            setUpdating(true);
+            const res = await api.put(`/installation-requests/${id}/readiness`, {
+                is_site_ready: editReadiness.is_site_ready,
+                readiness_details: editReadiness.details
+            });
+            if (res.data.success) {
+                setRequest((prev: any) => ({
+                    ...prev,
+                    is_site_ready: editReadiness.is_site_ready,
+                    readiness_details: editReadiness.details
+                }));
+                setReadinessModal(false);
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const openReadinessModal = () => {
+        setEditReadiness({
+            is_site_ready: request.is_site_ready,
+            details: request.readiness_details || []
+        });
+        setReadinessModal(true);
+    };
+
+    const toggleReadinessDetail = (item: string) => {
+        setEditReadiness(prev => {
+            const details = prev.details.includes(item)
+                ? prev.details.filter(i => i !== item)
+                : [...prev.details, item];
+            return { ...prev, details };
+        });
+    };
 
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
@@ -107,16 +156,49 @@ export default function InstallationRequestDetails() {
         }
     };
 
-    const fetchTechnicians = async () => {
+    const fetchTechnicians = async (startDate?: string, endDate?: string) => {
         try {
-            const res = await api.get('/admin/users?role=technician');
+            const sDate = startDate || request.scheduled_at;
+            const eDate = endDate || request.end_date || request.scheduled_at;
+
+            const res = await api.get('/admin/technicians/available', {
+                params: {
+                    start_date: sDate,
+                    end_date: eDate
+                }
+            });
             if (res.data.success) {
                 setTechnicians(res.data.data);
-                setAssignModal(true);
             }
         } catch (error) {
             console.error(error);
         }
+    };
+
+    const handleOpenAssignModal = () => {
+        const initialStart = request.scheduled_at ? new Date(request.scheduled_at).toISOString().split('T')[0] : '';
+        const initialEnd = request.end_date ? new Date(request.end_date).toISOString().split('T')[0] : initialStart;
+
+        setAssignDates({
+            start: initialStart,
+            end: initialEnd
+        });
+
+        // Initial fetch with current request dates
+        fetchTechnicians(initialStart, initialEnd);
+        setAssignModal(true);
+    };
+
+    const handleDateFilterChange = (key: 'start' | 'end', value: string) => {
+        setAssignDates(prev => {
+            const newDates = { ...prev, [key]: value };
+            // If start changes and is after end, update end
+            if (key === 'start' && newDates.end && value > newDates.end) {
+                newDates.end = value;
+            }
+            fetchTechnicians(newDates.start, newDates.end);
+            return newDates;
+        });
     };
 
     const handleAssign = async () => {
@@ -163,7 +245,7 @@ export default function InstallationRequestDetails() {
 
                 <div className="flex gap-2">
                     <button
-                        onClick={fetchTechnicians}
+                        onClick={handleOpenAssignModal}
                         className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
                     >
                         <User size={18} />
@@ -192,32 +274,65 @@ export default function InstallationRequestDetails() {
                             <div>
                                 <div className="text-sm text-slate-500 mb-1">{t('new_request.product_type')}</div>
                                 <div className="font-semibold text-slate-900">{request.product_type}</div>
+                                {request.invoice_number && (
+                                    <div className="mt-1 text-xs text-blue-600 bg-blue-50 w-fit px-2 py-1 rounded">
+                                        #{request.invoice_number}
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <div className="text-sm text-slate-500 mb-1">{t('common.quantity')}</div>
                                 <div className="font-semibold text-slate-900">{request.quantity}</div>
                             </div>
                             <div className="md:col-span-2">
-                                <div className="text-sm text-slate-500 mb-1">{t('request_details.site_status')}</div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="text-sm text-slate-500">{t('request_details.site_status')}</div>
+                                    <button
+                                        onClick={openReadinessModal}
+                                        className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                                    >
+                                        <Settings size={14} />
+                                        {t('common.edit')}
+                                    </button>
+                                </div>
+                                <div className="flex items-center gap-2 mb-4">
                                     <span className={clsx("px-2 py-1 rounded text-xs font-bold", request.is_site_ready ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
                                         {request.is_site_ready ? t('request_details.ready') : t('request_details.not_ready')}
                                     </span>
                                 </div>
-                            </div>
-                            {request.readiness_details && request.readiness_details.length > 0 && (
-                                <div className="md:col-span-2">
-                                    <div className="text-sm text-slate-500 mb-2">{t('new_request.completed_preparations')}</div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {request.readiness_details.map((item: string, idx: number) => (
-                                            <span key={idx} className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs border border-slate-200">
-                                                {/* Try to translate item if it's a key, otherwise show as is */}
-                                                {t(`new_request.readiness_options.${item}`) !== `new_request.readiness_options.${item}` ? t(`new_request.readiness_options.${item}`) : item}
-                                            </span>
-                                        ))}
+
+                                {request.readiness_details && request.readiness_details.length > 0 && (
+                                    <div className="space-y-3">
+                                        {/* Filter and show Product Status */}
+                                        {request.readiness_details.some((r: string) => productStatusOptions.includes(r)) && (
+                                            <div>
+                                                 <div className="text-xs font-semibold text-slate-700 mb-1">{t('new_request.product_status_title')}</div>
+                                                 <div className="flex flex-wrap gap-2">
+                                                    {request.readiness_details.filter((r: string) => productStatusOptions.includes(r)).map((item: string, idx: number) => (
+                                                        <span key={`prod-${idx}`} className="bg-purple-50 text-purple-700 px-2 py-1 rounded text-xs border border-purple-100">
+                                                            {t(`new_request.readiness_options.${item}`)}
+                                                        </span>
+                                                    ))}
+                                                 </div>
+                                            </div>
+                                        )}
+
+                                        {/* Filter and show Order Status */}
+                                        {request.readiness_details.some((r: string) => orderStatusDetails.includes(r)) && (
+                                            <div>
+                                                 <div className="text-xs font-semibold text-slate-700 mb-1">{t('new_request.order_status_title')}</div>
+                                                 <div className="flex flex-wrap gap-2">
+                                                    {request.readiness_details.filter((r: string) => orderStatusDetails.includes(r)).map((item: string, idx: number) => (
+                                                        <span key={`ord-${idx}`} className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs border border-blue-100">
+                                                            {t(`new_request.readiness_options.${item}`)}
+                                                        </span>
+                                                    ))}
+                                                 </div>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
                             {request.notes && (
                                 <div className="md:col-span-2">
                                     <div className="text-sm text-slate-500 mb-1">{t('new_request.additional_notes')}</div>
@@ -321,17 +436,6 @@ export default function InstallationRequestDetails() {
                         <h2 className="text-lg font-bold text-slate-900 mb-4">{t('request_details.schedule_details')}</h2>
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">
-                                    <Calendar size={20} />
-                                </div>
-                                <div>
-                                    <div className="text-xs text-slate-500">{t('common.date')}</div>
-                                    <div className="font-medium text-slate-900" dir="ltr">
-                                        {new Date(request.scheduled_at).toLocaleDateString(i18n.language)}
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
                                     <Clock size={20} />
                                 </div>
@@ -339,6 +443,31 @@ export default function InstallationRequestDetails() {
                                     <div className="text-xs text-slate-500">{t('common.time')}</div>
                                     <div className="font-medium text-slate-900" dir="ltr">
                                         {new Date(request.scheduled_at).toLocaleTimeString(i18n.language, {hour: '2-digit', minute:'2-digit'})}
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Dates */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center gap-3">
+                                    <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
+                                        <Calendar size={20} />
+                                    </div>
+                                    <div>
+                                        <div className="text-xs text-slate-500 font-medium mb-1">{t('requests.scheduled_at')}</div>
+                                        <div className="font-semibold text-slate-900">
+                                            {new Date(request.scheduled_at).toLocaleDateString()}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center gap-3">
+                                    <div className="bg-purple-100 p-2 rounded-lg text-purple-600">
+                                        <Calendar size={20} />
+                                    </div>
+                                    <div>
+                                        <div className="text-xs text-slate-500 font-medium mb-1">{t('requests.end_date')}</div>
+                                        <div className="font-semibold text-slate-900">
+                                            {request.end_date ? new Date(request.end_date).toLocaleDateString() : t('common.undefined')}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -427,7 +556,36 @@ export default function InstallationRequestDetails() {
             {assignModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
-                        <h2 className="text-xl font-bold mb-4">{t('requests.assign_technician')}</h2>
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold">{t('requests.assign_technician')}</h2>
+                            <button onClick={() => setAssignModal(false)} className="text-slate-400 hover:text-slate-600">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {/* Date Filters inside Modal */}
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4 grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-xs font-medium text-slate-500 mb-1">{t('requests.scheduled_at')}</label>
+                                <input
+                                    type="date"
+                                    value={assignDates.start}
+                                    onChange={(e) => handleDateFilterChange('start', e.target.value)}
+                                    className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-slate-500 mb-1">{t('requests.end_date')}</label>
+                                <input
+                                    type="date"
+                                    value={assignDates.end}
+                                    min={assignDates.start}
+                                    onChange={(e) => handleDateFilterChange('end', e.target.value)}
+                                    className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm"
+                                />
+                            </div>
+                        </div>
+
                         <div className="space-y-4">
                             {technicians.length === 0 ? (
                                 <div className="text-center text-slate-500 py-4">{t('technicians.no_techs')}</div>

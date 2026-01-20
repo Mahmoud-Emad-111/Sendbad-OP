@@ -114,6 +114,7 @@ class AuthController extends Controller
         $request->validate([
             'phone' => 'required|string',
             'password' => 'required|string',
+            'fcm_token' => 'nullable|string'
         ]);
 
         if (!auth()->attempt($request->only('phone', 'password'))) {
@@ -133,6 +134,12 @@ class AuthController extends Controller
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
+
+        // Save fcm_token if provided by the client
+        if ($request->filled('fcm_token')) {
+            $user->fcm_token = $request->fcm_token;
+            $user->save();
+        }
 
         return response()->json([
             'success' => true,

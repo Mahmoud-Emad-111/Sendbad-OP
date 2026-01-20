@@ -21,10 +21,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Service Requests
     Route::get('/requests', [\App\Http\Controllers\Api\ServiceRequestController::class, 'index']);
+    Route::get('/requests/my-orders', [\App\Http\Controllers\Api\ServiceRequestController::class, 'getMyOrders']);
+
+    // Notifications
+    Route::get('/notifications', [\App\Http\Controllers\Api\NotificationController::class, 'index']);
+    Route::post('/notifications/read', [\App\Http\Controllers\Api\NotificationController::class, 'markRead']);
 
     // Maintenance (Standard)
-    Route::post('/requests', [\App\Http\Controllers\Api\ServiceRequestController::class, 'store'])
-        ->middleware(['financial.eligibility', 'task.readiness']);
+    Route::post('/requests', [\App\Http\Controllers\Api\ServiceRequestController::class, 'store']);
+        // ->middleware(['financial.eligibility', 'task.readiness']);
 
     // Installation (New)
     // Installation (New Table)
@@ -45,4 +50,18 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Admin Reports
     Route::get('/admin/reports/performance', [\App\Http\Controllers\Api\AdminController::class, 'getPerformanceReports']);
+
+    // Admin - User Lookup for Request Creation
+    Route::get('/admin/users/lookup/{phone}', [\App\Http\Controllers\Api\AdminController::class, 'lookupUserByPhone']);
+
+    // Admin - Create Request on behalf of user
+    Route::post('/admin/requests', [\App\Http\Controllers\Api\AdminController::class, 'createServiceRequest']);
+    Route::post('/admin/installation-requests', [\App\Http\Controllers\Api\AdminController::class, 'createInstallationRequest']);
+    Route::put('/installation-requests/{id}/readiness', [\App\Http\Controllers\Api\InstallationRequestController::class, 'updateReadiness']);
+    Route::get('/admin/technicians/available', [\App\Http\Controllers\Api\AdminController::class, 'getAvailableTechnicians']);
+
+    // Technician App Routes
+    Route::get('/technician/schedule', [\App\Http\Controllers\Api\ServiceRequestController::class, 'getMySchedule']);
+    Route::post('/technician/installation-requests/accept', [\App\Http\Controllers\Api\InstallationRequestController::class, 'acceptRequest']);
+    Route::post('/technician/service-requests/accept', [\App\Http\Controllers\Api\ServiceRequestController::class, 'acceptRequest']);
 });

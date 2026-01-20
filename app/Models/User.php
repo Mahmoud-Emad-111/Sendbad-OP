@@ -56,8 +56,13 @@ class User extends Authenticatable
         return $this->hasMany(ServiceRequest::class);
     }
 
-    public function assignedRequests()
+    public function assignedServiceRequests()
     {
         return $this->hasMany(ServiceRequest::class, 'technician_id');
+    }
+
+    public function assignedInstallationRequests()
+    {
+        return $this->hasMany(InstallationRequest::class, 'technician_id');
     }
 }

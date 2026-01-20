@@ -33,4 +33,6 @@ interface OdooIntegrationInterface
      * Get Customer Invoices (account.move)
      */
     public function getCustomerInvoices(int $odooId, ?string $phone = null): array;
+
+    public function getUserTasks(int $odooId): array;
 }

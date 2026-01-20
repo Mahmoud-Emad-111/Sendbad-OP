@@ -128,8 +128,9 @@
     "date_to": "إلى",
     "reset_filters": "إعادة تعيين الفلاتر",
     "technician": "الفني المسؤول",
-    "scheduled_at": "الموعد",
-    "assign_technician": "إسناد للفني",
+    "scheduled_at": "تاريخ الزيارة (البدء)",
+    "end_date": "تاريخ التسليم (الانتهاء)",
+    "assign_technician": "إسناد لفني",
     "not_assigned": "غير مسند",
     "request_details": "تفاصيل الطلب",
     "client_info": "بيانات العميل",
@@ -252,16 +253,20 @@
     "product_info": "بيانات المنتج",
     "product_type": "نوع المنتج",
     "product_placeholder": "مثال: مطبخ ألوميتال، دولاب...",
-    "site_readiness": "تجهيزات الموقع",
-    "is_site_ready": "هل الموقع جاهز للتركيب؟",
-    "completed_preparations": "التجهيزات المكتملة:",
-    "readiness_options": {
-        "ceramic": "تركيب السيراميك",
-        "doors": "تركيب الأبواب",
-        "windows": "تركيب النوافذ",
-        "painting": "دهان الحوائط",
-        "electricity": "توصيل الكهرباء"
-    },
+     "site_readiness": "حالة وجاهزية الطلب",
+     "is_site_ready": "الموقع جاهز للتركيب؟",
+     "completed_preparations": "تفاصيل التجهيزات",
+     "product_status_title": "📦 حالة المنتج",
+     "order_status_title": "تفاصيل حالة الطلب",
+     "readiness_options": {
+         "quartz": "الكوارتز",
+         "appliances": "الأجهزة",
+         "order": "الطلبية",
+         "in_stock": "في المخزن",
+         "shipping": "في الشحن",
+         "production": "في الإنتاج",
+         "on_site": "في الموقع"
+     },
     "site_images": "صور الموقع (اختياري)",
     "add_images": "إضافة صور",
     "location_date": "الموقع والتاريخ",
@@ -325,5 +330,28 @@
      "new_count": "{{count}} جديد",
      "empty": "لا توجد إشعارات جديدة",
      "clear_all": "مسح الكل"
+  },
+  "new_service_request": {
+     "title": "طلب صيانة جديد (للإدارة)",
+     "subtitle": "إضافة طلب صيانة للعميل",
+     "phone_lookup": "البحث برقم الهاتف",
+     "invalid_phone": "رقم هاتف غير صحيح",
+     "user_not_found": "المستخدم غير موجود في النظام",
+     "user_found": "تم العثور على المستخدم",
+     "linked_to_odoo": "مرتبط بـ Odoo",
+     "user_not_on_odoo": "العميل غير موجود على Odoo",
+     "odoo_warning_message": "هذا العميل غير مرتبط بحساب Odoo. يمكنك المتابعة لكن لن تتمكن من ربط الطلب بفاتورة.",
+     "continue_without_odoo": "متابعة بدون Odoo",
+     "select_order": "اختر الطلب/الفاتورة",
+     "choose_order": "اختر طلب",
+     "lookup_first": "يرجى البحث عن المستخدم أولاً",
+     "fill_required": "يرجى ملء جميع الحقول المطلوبة",
+     "images_selected": "صورة تم اختيارها",
+     "success": "تم إنشاء الطلب بنجاح!",
+     "error": "حدث خطأ أثناء إنشاء الطلب"
+  },
+  "new_installation_request": {
+     "title": "طلب تركيب جديد (للإدارة)",
+     "subtitle": "إضافة طلب تركيب للعميل"
   }
 }

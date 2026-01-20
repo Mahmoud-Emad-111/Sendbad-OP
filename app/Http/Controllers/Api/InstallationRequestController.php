@@ -58,20 +58,9 @@ class InstallationRequestController extends Controller
     /**
      * Store new Installation Request
      */
-    public function store(Request $request)
+    public function store(\App\Http\Requests\StoreInstallationRequest $request)
     {
-        $request->validate([
-            'product_type' => 'required|string',
-            'quantity' => 'required|integer|min:1',
-            'is_site_ready' => 'required|boolean',
-            'readiness_details' => 'array', // Optional, defaults to []
-            'notes' => 'nullable|string',
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
-            'address' => 'required|string',
-            'scheduled_at' => 'required|date',
-            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120'
-        ]);
+        // Validation handled by FormRequest
 
         try {
             DB::beginTransaction();
@@ -80,6 +69,7 @@ class InstallationRequestController extends Controller
                 'user_id' => $request->user()->id,
                 'product_type' => $request->product_type,
                 'quantity' => $request->quantity,
+                'invoice_number' => 'B-' . $request->invoice_number,
                 'is_site_ready' => $request->boolean('is_site_ready'),
                 'readiness_details' => $request->readiness_details ?? [],
                 'notes' => $request->notes,
@@ -87,6 +77,7 @@ class InstallationRequestController extends Controller
                 'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
                 'scheduled_at' => $request->scheduled_at,
+                'end_date' => $request->end_date ?? $request->scheduled_at,
                 'status' => 'pending'
             ]);
 
@@ -123,6 +114,21 @@ class InstallationRequestController extends Controller
     {
         $request = InstallationRequest::with(['user', 'technician', 'attachments'])->findOrFail($id);
         return response()->json(['success' => true, 'data' => $request]);
+    }
+
+    public function acceptRequest(\App\Http\Requests\AcceptInstallationRequest $request)
+    {
+        // Validation handled by FormRequest
+        $installationRequest = InstallationRequest::find($request->id);
+
+        $installationRequest->technician_accepted_at = now();
+        $installationRequest->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Request accepted successfully',
+            'data' => $installationRequest
+        ]);
     }
 
     /**
@@ -173,6 +179,26 @@ class InstallationRequestController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Technician assigned successfully',
+            'data' => $installationRequest
+        ]);
+    }
+    public function updateReadiness(Request $request, $id)
+    {
+        $installationRequest = InstallationRequest::findOrFail($id);
+
+        $validated = $request->validate([
+            'is_site_ready' => 'required|boolean',
+            'readiness_details' => 'nullable|array',
+        ]);
+
+        $installationRequest->update([
+            'is_site_ready' => $validated['is_site_ready'],
+            'readiness_details' => $validated['readiness_details'] ?? [],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Readiness details updated successfully',
             'data' => $installationRequest
         ]);
     }

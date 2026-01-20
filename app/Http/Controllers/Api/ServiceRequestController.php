@@ -14,10 +14,144 @@ class ServiceRequestController extends Controller
      * List requests (Admin sees all, Customer sees theirs)
      */
     protected $notificationService;
+    protected $odooService;
 
-    public function __construct(\App\Services\NotificationService $notificationService)
-    {
+    public function __construct(
+        \App\Services\NotificationService $notificationService,
+        \App\Services\Odoo\OdooService $odooService
+    ) {
         $this->notificationService = $notificationService;
+        $this->odooService = $odooService;
+    }
+
+    /**
+     * Get Customer Orders (For selecting product to maintain)
+     */
+    public function getMyOrders(Request $request)
+    {
+        $user = $request->user();
+
+        // 1. Find Odoo ID
+        $partner = $this->odooService->findCustomerByPhoneOrName($user->phone, $user->name);
+
+        if (!$partner) {
+            return response()->json([
+                'success' => true,
+                'message' => 'No linked Odoo account found',
+                'data' => []
+            ]);
+        }
+
+        // 2. Fetch Orders
+        $orders = $this->odooService->getCustomerOrders($partner['id'], $user->phone, $user->name);
+
+        // 3. Format for Mobile
+        $formattedOrders = array_map(function ($order) {
+            return [
+                'id' => $order['id'],
+                // Using Sale Order Ref as 'Invoice Number' as it's the primary reference for the customer
+                'invoice_number' => $order['name'],
+                'date' => $order['date_order'],
+                'quotation_template' => is_array($order['sale_order_template_id'])
+                    ? $order['sale_order_template_id'][1]
+                    : null,
+                'total' => $order['amount_total']
+            ];
+        }, $orders);
+
+        return response()->json([
+            'success' => true,
+            'data' => $formattedOrders
+        ]);
+    }
+
+    /**
+     * Technician accepts a service request
+     */
+    public function acceptRequest(\App\Http\Requests\AcceptServiceRequest $request)
+    {
+        // Validation handled by FormRequest (Role, Existence, Ownership, Not Accepted)
+
+        $serviceRequest = ServiceRequest::find($request->id);
+
+        $serviceRequest->status = 'on_way';
+        $serviceRequest->technician_accepted_at = now();
+        $serviceRequest->save();
+
+        // Notify customer
+        $this->notificationService->sendNotification(
+            $serviceRequest->user,
+            'Service Request Accepted',
+            "Your service request #{$serviceRequest->id} has been accepted by the technician and they are on their way.",
+            ['type' => 'service_request_update', 'request_id' => $serviceRequest->id]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Service request accepted and status updated to "on_way".',
+            'data' => $serviceRequest
+        ]);
+    }
+
+    /**
+     * Get Technician Schedule (Assigned Requests)
+     */
+    public function getMySchedule(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user->role !== 'technician') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Fetch Assigned Service Requests
+        $serviceRequests = \App\Models\ServiceRequest::where('technician_id', $user->id)
+            ->whereIn('status', ['assigned', 'on_way', 'in_progress'])
+            ->get()
+            ->map(function ($req) {
+                return [
+                    'id' => $req->id,
+                    'type' => 'service',
+                    'service_type' => $req->service_type,
+                    'invoice_number' => $req->invoice_number,
+                    'start_date' => $req->scheduled_at->format('Y-m-d'),
+                    'end_date' => $req->end_date ? $req->end_date->format('Y-m-d') : $req->scheduled_at->format('Y-m-d'),
+                    'status' => $req->status,
+                    'technician_accepted_at' => $req->technician_accepted_at,
+                    'address' => $req->address,
+                    'latitude' => $req->latitude,
+                    'longitude' => $req->longitude,
+                    'description' => $req->description,
+                ];
+            });
+
+        // Fetch Assigned Installation Requests
+        $installationRequests = \App\Models\InstallationRequest::where('technician_id', $user->id)
+            ->whereIn('status', ['assigned', 'on_way', 'in_progress'])
+            ->get()
+            ->map(function ($req) {
+                return [
+                    'id' => $req->id,
+                    'type' => 'installation',
+                    'product_type' => $req->product_type,
+                    'invoice_number' => $req->invoice_number,
+                    'start_date' => $req->scheduled_at->format('Y-m-d'),
+                    'end_date' => $req->end_date ? $req->end_date->format('Y-m-d') : $req->scheduled_at->format('Y-m-d'),
+                    'status' => $req->status,
+                    'technician_accepted_at' => $req->technician_accepted_at,
+                    'address' => $req->address,
+                    'latitude' => $req->latitude,
+                    'longitude' => $req->longitude,
+                    'quantity' => $req->quantity,
+                ];
+            });
+
+        $schedule = $serviceRequests->merge($installationRequests)->sortBy('start_date')->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $schedule
+        ]);
     }
 
     /**
@@ -106,17 +240,9 @@ class ServiceRequestController extends Controller
     /**
      * Create a new Service Request
      */
-    public function store(Request $request)
+    public function store(\App\Http\Requests\StoreServiceRequest $request)
     {
-        \Illuminate\Support\Facades\Log::info('Request Data:', $request->all());
-
-        $request->validate([
-            'service_type' => 'required|string',
-            'description' => 'required|string',
-            'address' => 'required|string',
-            'scheduled_at' => 'required|date',
-            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120', // Increased to 5MB
-        ]);
+        \Illuminate\Support\Facades\Log::info('Request Data:', $request->validated());
 
         try {
             DB::beginTransaction();
@@ -130,6 +256,8 @@ class ServiceRequestController extends Controller
                 'latitude' => $request->latitude ?? null,
                 'longitude' => $request->longitude ?? null,
                 'status' => 'pending',
+                'invoice_number' => 'T-' . $request->invoice_number,
+                'end_date' => $request->end_date ?? $request->scheduled_at,
             ]);
 
             // Handle Images
@@ -312,7 +440,7 @@ class ServiceRequestController extends Controller
         }
 
         // Debug: Get Partner Name to verify we have the right person
-        $partnerInfo = $odoo->findCustomerByPhoneOrName($user->phone, $user->name ?? ''); // Or just read name by ID if we had a method
+        $partnerInfo = $odoo->findCustomerByPhoneOrName($user->phone, $user->name); // Updated to use correct method name
         $partnerName = $partnerInfo['name'] ?? 'Unknown';
 
         // 1. Check Financials (Must have 0 due)

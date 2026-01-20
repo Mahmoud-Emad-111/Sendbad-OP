@@ -89,7 +89,7 @@ export default function InstallationRequests() {
           <p className="text-slate-500">{t('installation.subtitle')}</p>
         </div>
         <button
-            onClick={() => window.location.href = "/dashboard/requests/new"}
+            onClick={() => window.location.href = "/dashboard/requests/new-installation"}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl transition-colors font-medium shadow-sm hover:shadow-md"
         >
             <span>+</span>
@@ -140,7 +140,7 @@ export default function InstallationRequests() {
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-medium text-sm">
                     <tr>
                         <th className="px-6 py-4 text-start">{t('user_details.request_id')}</th>
-                        <th className="px-6 py-4 text-start">{t('installation.table.product')}</th>
+                        <th className="px-6 py-4 text-start">{t('installation.table.product')} / {t('new_service_request.invoice_number')}</th>
                         <th className="px-6 py-4 text-start">{t('installation.table.quantity')}</th>
                         <th className="px-6 py-4 text-start">{t('installation.table.location')}</th>
                         <th className="px-6 py-4 text-start">{t('installation.table.site_readiness')}</th>
@@ -161,11 +161,16 @@ export default function InstallationRequests() {
                                 <td className="px-6 py-4 font-medium text-slate-900">
                                     <div className="flex items-center gap-2">
                                         <Package size={16} className="text-slate-400" />
-                                        {req.details?.product_type || t('common.undefined')}
+                                        {req.product_type || t('common.undefined')}
+                                        {req.invoice_number && (
+                                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                                                #{req.invoice_number}
+                                            </span>
+                                        )}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 text-slate-600 font-mono font-bold">
-                                    x{req.details?.quantity || 1}
+                                    x{req.quantity || 1}
                                 </td>
                                 <td className="px-6 py-4 text-slate-500 truncate max-w-xs" title={req.address}>
                                     <div className="flex items-center gap-1">
@@ -174,8 +179,8 @@ export default function InstallationRequests() {
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
-                                     <span className={clsx("text-xs font-bold px-2 py-1 rounded", req.details?.is_site_ready ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
-                                        {req.details?.is_site_ready ? t('installation.site_ready') : t('installation.site_not_ready')}
+                                     <span className={clsx("text-xs font-bold px-2 py-1 rounded", req.is_site_ready ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
+                                        {req.is_site_ready ? t('installation.site_ready') : t('installation.site_not_ready')}
                                      </span>
                                 </td>
                                 <td className="px-6 py-4 text-slate-600 text-sm">
