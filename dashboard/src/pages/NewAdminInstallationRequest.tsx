@@ -147,7 +147,12 @@ export default function NewAdminInstallationRequest() {
 
     try {
         const data = new FormData();
-        data.append('user_id', userData.user.id);
+        if (userData.user.id) {
+            data.append('user_id', userData.user.id);
+        } else {
+             data.append('new_user_name', userData.user.name);
+             data.append('new_user_phone', userData.user.phone);
+        }
         if (selectedOrder) {
              data.append('invoice_number', selectedOrder);
         }
@@ -243,6 +248,12 @@ export default function NewAdminInstallationRequest() {
                             <span className="font-medium text-slate-600">{t('common.phone')}:</span>
                             <span className="text-slate-900">{userData.user.phone}</span>
                         </p>
+                        {userData.user.is_odoo_only && (
+                             <p className="text-amber-600 flex items-center gap-1 font-medium bg-amber-50 p-2 rounded-lg border border-amber-100">
+                                <Info size={16} />
+                                {t('new_service_request.is_new_user') || 'User will be registered automatically'}
+                             </p>
+                        )}
                         {userData.odoo.linked && (
                             <p className="text-green-600 flex items-center gap-1">
                                 <CheckCircle size={16} />

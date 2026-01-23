@@ -53,6 +53,10 @@ export const adminService = {
     lookupUserByPhone: async (phone: string) => {
         const response = await api.get(`/admin/users/lookup/${phone}`);
         return response.data;
+    },
+    createManualUser: async (data: any) => {
+        const response = await api.post('/admin/users', data);
+        return response.data;
     }
 };
 

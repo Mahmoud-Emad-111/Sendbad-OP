@@ -160,7 +160,7 @@ class ServiceRequestController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $query = \App\Models\ServiceRequest::with(['user', 'technician', 'attachments']);
+        $query = \App\Models\ServiceRequest::with(['user', 'technician', 'attachments', 'rating']);
 
         if ($user->role === 'customer') {
             $query->where('user_id', $user->id);
@@ -220,7 +220,7 @@ class ServiceRequestController extends Controller
      */
     public function show(Request $request, $id)
     {
-        $serviceRequest = \App\Models\ServiceRequest::with(['user', 'technician', 'attachments'])->findOrFail($id);
+        $serviceRequest = \App\Models\ServiceRequest::with(['user', 'technician', 'attachments', 'rating'])->findOrFail($id);
 
         // Security check: Customer can only see their own, Tech can only see assigned, Admin sees all
         $user = $request->user();
@@ -509,6 +509,70 @@ class ServiceRequestController extends Controller
                 'is_ready' => $isReady,
                 'odoo_id' => $user->odoo_id
             ]
+        ]);
+    }
+
+    /**
+     * Submit/Update Rating for a Request
+     * Used for both ServiceRequest and InstallationRequest
+     */
+    public function submitRating(\App\Http\Requests\RatingRequest $request, $id)
+    {
+        $user = $request->user();
+
+        // Determine request type from route
+        $requestType = $request->route()->getName() === 'installation_requests.rating' ? 'installation' : 'service';
+
+        // Find the request and verify ownership
+        if ($requestType === 'service') {
+            $serviceRequest = \App\Models\ServiceRequest::findOrFail($id);
+            if ($serviceRequest->user_id !== $user->id) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+        } else {
+            $installationRequest = \App\Models\InstallationRequest::findOrFail($id);
+            if ($installationRequest->user_id !== $user->id) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+        }
+
+        // Create or update rating
+        $rating = \App\Models\Rating::updateOrCreate(
+            [
+                'request_id' => $id,
+                'request_type' => $requestType,
+            ],
+            [
+                'user_id' => $user->id,
+                'product_rating' => $request->product_rating,
+                'service_rating' => $request->service_rating,
+                'how_found_us' => $request->how_found_us,
+                'customer_notes' => $request->customer_notes,
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Rating submitted successfully',
+            'data' => $rating
+        ]);
+    }
+
+    /**
+     * Delete Service Request (Admin Only)
+     */
+    public function destroy(Request $request, $id)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $serviceRequest = \App\Models\ServiceRequest::findOrFail($id);
+        $serviceRequest->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Service request deleted successfully'
         ]);
     }
 }

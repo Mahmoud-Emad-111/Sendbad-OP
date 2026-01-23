@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use App\Services\Odoo\OdooService;
 
 class AdminController extends Controller
 {
@@ -26,6 +27,46 @@ class AdminController extends Controller
             'data' => $users
         ]);
     }
+    /**
+     * Create a new Customer Manually (with Odoo fields)
+     */
+    public function storeUser(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'phone' => 'required|string|unique:users,phone',
+            'orders' => 'nullable|array',
+            'orders.*.invoice_number' => 'required|string',
+            'orders.*.quotation_template' => 'nullable|string',
+            'orders.*.total_amount' => 'required|numeric',
+            'orders.*.paid_amount' => 'required|numeric',
+            'orders.*.remaining_amount' => 'nullable|numeric',
+            'orders.*.status' => 'required|string|in:paid,partial',
+        ]);
+
+        $user = User::create([
+            'name' => $request->name,
+            'phone' => $request->phone,
+            // 'password' => \Illuminate\Support\Facades\Hash::make('12345678'), // Default password
+            'role' => 'customer',
+            'is_active' => true,
+        ]);
+
+        if ($request->has('orders')) {
+            foreach ($request->orders as $orderData) {
+                // Auto-calc remaining if not sent? Frontend sends it, but safe to calc?
+                // Using frontend data for now.
+                $user->manualOrders()->create($orderData);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إضافة العميل بنجاح',
+            'data' => $user->load('manualOrders')
+        ]);
+    }
+
 
     /**
      * Create a new Technician
@@ -98,7 +139,9 @@ class AdminController extends Controller
 
         $user = User::with(['serviceRequests' => function($q) {
             $q->latest();
-        }, 'assignedRequests' => function($q) {
+        }, 'assignedServiceRequests' => function($q) {
+            $q->with('user')->latest();
+        }, 'assignedInstallationRequests' => function($q) {
             $q->with('user')->latest();
         }])->findOrFail($id);
 
@@ -126,7 +169,7 @@ class AdminController extends Controller
     /**
      * Lookup user by phone and fetch Odoo data for Admin request creation
      */
-    public function lookupUserByPhone(Request $request, $phone, \App\Services\Odoo\OdooService $odoo)
+    public function lookupUserByPhone(Request $request, OdooService $odoo, $phone)
     {
         if ($request->user()->role !== 'admin') {
             return response()->json(['message' => 'Unauthorized'], 403);
@@ -135,22 +178,20 @@ class AdminController extends Controller
         // 1. Find user by phone in database
         $user = User::where('phone', $phone)->first();
 
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'User not found in database'
-            ], 404);
-        }
+        // 2. Try to find in Odoo
+        // searching by phone only, name is null
+        $odooPartner = $odoo->findCustomerByPhoneOrName($phone, null);
 
-        // 2. Fetch Odoo data
-        $odooPartner = $odoo->findCustomerByPhoneOrName($user->phone, $user->name);
         $odooData = [
             'linked' => false,
             'orders' => []
         ];
 
+        // 3. Process Odoo Data if found
         if ($odooPartner) {
-            $orders = $odoo->getCustomerOrders($odooPartner['id'], $user->phone, $user->name);
+            $nameForOrders = $user ? $user->name : $odooPartner['name'];
+            $orders = $odoo->getCustomerOrders($odooPartner['id'], $phone, $nameForOrders);
+
             $odooData = [
                 'linked' => true,
                 'partner_id' => $odooPartner['id'],
@@ -164,6 +205,58 @@ class AdminController extends Controller
                         'date' => $o['date_order']
                     ];
                 }, $orders)
+            ];
+        }
+
+        // Case 1: User Not found locally AND Not found in Odoo
+        if (!$user && !$odooPartner) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found in database or Odoo'
+            ], 404);
+        }
+
+        // Mock Order Data if Local User has manual orders
+        $manualOrders = $user ? $user->manualOrders : collect([]);
+
+        if ($manualOrders->isNotEmpty() && empty($odooData['orders'])) {
+             // Treat this local user as having "Linked Orders"
+             $odooData['linked'] = true;
+             $odooData['partner_id'] = 'manual_' . $user->id; // Fake ID
+             $odooData['orders'] = $manualOrders->map(function ($order) {
+                 return [
+                     'id' => 'manual_' . $order->id,
+                     'name' => $order->invoice_number,
+                     'quotation_template' => $order->quotation_template,
+                     'date' => $order->created_at->format('Y-m-d H:i:s'),
+                     'amount_total' => $order->total_amount,
+                     'amount_residual' => $order->remaining_amount,
+                     'is_manual' => true
+                 ];
+             })->toArray();
+        } elseif ($user && $user->invoice_number && empty($odooData['orders'])) {
+             // Fallback for previous single version (if any exist)
+             $odooData['linked'] = true;
+             $odooData['partner_id'] = 'manual_' . $user->id;
+             $odooData['orders'][] = [
+                 'id' => 'manual_' . $user->invoice_number,
+                 'name' => $user->invoice_number,
+                 'quotation_template' => $user->quotation_template,
+                 'date' => $user->created_at->format('Y-m-d H:i:s'),
+                 'is_manual' => true
+             ];
+        }
+
+        // Case 2: User Not found locally BUT Found in Odoo -> Prepare "Virtual" User
+        if (!$user && $odooPartner) {
+            $user = [
+                'id' => null, // Validates that accurate user creation is needed
+                'name' => $odooPartner['name'], // Taking name from Odoo
+                'phone' => $phone,
+                'email' => $odooPartner['email'] ?? null,
+                'address' => $odooPartner['street'] ?? null, // Taking address from Odoo
+                'role' => 'customer',
+                'is_odoo_only' => true
             ];
         }
 
@@ -186,10 +279,10 @@ class AdminController extends Controller
         }
 
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
+            'user_id' => 'nullable|exists:users,id',
+            'new_user_name' => 'required_without:user_id|string',
+            'new_user_phone' => 'required_without:user_id|string',
             'service_type' => 'required|string|in:maintenance,repair,inspection',
-            'description' => 'required|string',
-            'address' => 'nullable|string',
             'description' => 'required|string',
             'address' => 'nullable|string',
             'scheduled_at' => 'required|date',
@@ -200,8 +293,24 @@ class AdminController extends Controller
             'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120',
         ]);
 
+        $userId = $validated['user_id'] ?? null;
+
+        // If user_id is null, create the user
+        if (!$userId) {
+            $user = User::firstOrCreate(
+                ['phone' => $validated['new_user_phone']],
+                [
+                    'name' => $validated['new_user_name'],
+                    'password' => \Illuminate\Support\Facades\Hash::make('12345678'), // Default password
+                    'role' => 'customer',
+                    'is_active' => true
+                ]
+            );
+            $userId = $user->id;
+        }
+
         $serviceRequest = \App\Models\ServiceRequest::create([
-            'user_id' => $validated['user_id'],
+            'user_id' => $userId,
             'service_type' => $validated['service_type'],
             'description' => $validated['description'],
             'address' => $validated['address'] ?? '',
@@ -241,12 +350,13 @@ class AdminController extends Controller
         }
 
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
+            'user_id' => 'nullable|exists:users,id',
+            'new_user_name' => 'required_without:user_id|string',
+            'new_user_phone' => 'required_without:user_id|string',
             'invoice_number' => 'nullable|string',
             'product_type' => 'required|string',
             'quantity' => 'nullable|integer|min:1',
             'is_site_ready' => 'required|boolean',
-            'readiness_details' => 'nullable|json',
             'readiness_details' => 'nullable|json',
             'notes' => 'nullable|string',
             'address' => 'nullable|string',
@@ -257,8 +367,24 @@ class AdminController extends Controller
             'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120',
         ]);
 
+        $userId = $validated['user_id'] ?? null;
+
+        // If user_id is null, create the user
+        if (!$userId) {
+            $user = User::firstOrCreate(
+                ['phone' => $validated['new_user_phone']],
+                [
+                    'name' => $validated['new_user_name'],
+                    'password' => \Illuminate\Support\Facades\Hash::make('12345678'), // Default password
+                    'role' => 'customer',
+                    'is_active' => true
+                ]
+            );
+            $userId = $user->id;
+        }
+
         $installationRequest = \App\Models\InstallationRequest::create([
-            'user_id' => $validated['user_id'],
+            'user_id' => $userId,
             'invoice_number' => isset($validated['invoice_number']) ? 'B-' . $validated['invoice_number'] : null,
             'product_type' => $validated['product_type'],
             'quantity' => $validated['quantity'] ?? 1,
@@ -295,11 +421,11 @@ class AdminController extends Controller
     {
         // 1. Top Technicians by Rating
         $topTechnicians = User::where('role', 'technician')
-            ->whereHas('assignedRequests', function($q) {
+            ->whereHas('assignedServiceRequests', function($q) {
                 $q->whereNotNull('rating');
             })
-            ->withAvg('assignedRequests as avg_rating', 'rating')
-            ->withCount(['assignedRequests as completed_count' => function($q) {
+            ->withAvg('assignedServiceRequests as avg_rating', 'rating')
+            ->withCount(['assignedServiceRequests as completed_count' => function($q) {
                 $q->where('status', 'completed');
             }])
             ->orderByDesc('avg_rating')
@@ -383,6 +509,28 @@ class AdminController extends Controller
         return response()->json([
             'success' => true,
             'data' => $availableTechnicians->values()
+        ]);
+    }
+    /**
+     * Delete User (Admin Only)
+     */
+    public function deleteUser(Request $request, $id)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $user = User::findOrFail($id);
+
+        if ($user->id === $request->user()->id) {
+            return response()->json(['success' => false, 'message' => 'Cannot delete your own account'], 400);
+        }
+
+        $user->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User deleted successfully'
         ]);
     }
 }

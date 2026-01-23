@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import api from '../services/auth';
-import { Calendar, User, Settings, AlertCircle, CheckCircle, Clock, Eye, X, Filter, Search as SearchIcon, RotateCcw } from 'lucide-react';
+import { Calendar, User, Settings, AlertCircle, CheckCircle, Clock, Eye, X, Filter, Search as SearchIcon, RotateCcw, Trash2 } from 'lucide-react';
+import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import LoadingSpinner from '../components/LoadingSpinner';
+import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 
 export default function ServiceRequests() {
   const { t, i18n } = useTranslation();
@@ -25,6 +27,7 @@ export default function ServiceRequests() {
     const [assignDates, setAssignDates] = useState({ start: '', end: '' });
     const [selectedTech, setSelectedTech] = useState('');
     const [viewModal, setViewModal] = useState<{show: boolean, request: any | null}>({show: false, request: null});
+    const [deleteModal, setDeleteModal] = useState<{show: boolean, requestId: number | null, loading: boolean}>({show: false, requestId: null, loading: false});
 
   // ... inside component ...
   const [userRole, setUserRole] = useState<string>('');
@@ -157,6 +160,26 @@ export default function ServiceRequests() {
             }
         } catch (error) {
             toast.error(t('requests.assign_error'));
+        }
+    };
+
+    const handleDeleteClick = (requestId: number) => {
+        setDeleteModal({ show: true, requestId, loading: false });
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteModal.requestId) return;
+        setDeleteModal(prev => ({ ...prev, loading: true }));
+        try {
+            const res = await api.delete(`/requests/${deleteModal.requestId}`);
+            if (res.data.success) {
+                toast.success(t('requests.delete_success') || 'Request deleted successfully');
+                setDeleteModal({ show: false, requestId: null, loading: false });
+                loadRequests();
+            }
+        } catch (error) {
+            toast.error(t('requests.delete_error') || 'Failed to delete request');
+            setDeleteModal(prev => ({ ...prev, loading: false }));
         }
     };
 
@@ -358,6 +381,16 @@ export default function ServiceRequests() {
                                             {t('requests.assign_technician')}
                                         </button>
                                     )}
+
+                                    {userRole === 'admin' && (
+                                        <button
+                                            onClick={() => handleDeleteClick(req.id)}
+                                            className="text-slate-400 hover:text-red-600 transition-colors p-1"
+                                            title={t('common.delete')}
+                                        >
+                                           <Trash2 size={18} />
+                                        </button>
+                                    )}
                                 </div>
                             </td>
                         </tr>
@@ -367,6 +400,7 @@ export default function ServiceRequests() {
         </table>
       </div>
     </div>
+
 
       {/* View Details Modal */}
       {viewModal.show && viewModal.request && (
@@ -560,6 +594,16 @@ export default function ServiceRequests() {
             </div>
         </div>
       )}
+
+
+        <DeleteConfirmationModal
+            isOpen={deleteModal.show}
+            onClose={() => setDeleteModal({ show: false, requestId: null, loading: false })}
+            onConfirm={confirmDelete}
+            title={t('requests.delete_confirm_title') || 'Delete Request'}
+            message={t('requests.delete_confirm_message') || 'Are you sure you want to delete this service request? This action cannot be undone.'}
+            loading={deleteModal.loading}
+        />
     </div>
   );
 }

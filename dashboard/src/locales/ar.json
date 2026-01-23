@@ -60,13 +60,13 @@
     "registered_customer": "عميل",
     "recent_requests": "أحدث الطلبات",
     "stats": {
-        "total_requests": "إجمالي الطلبات",
-        "pending": "قيد الانتظار",
-        "in_progress": "جاري العمل",
-        "completed": "مكتملة",
-        "total_installations": "طلبات التركيب",
-        "pending_installations": "تركيبات قيد الانتظار",
-        "completed_installations": "تركيبات مكتملة"
+      "total_requests": "إجمالي الطلبات",
+      "pending": "قيد الانتظار",
+      "in_progress": "جاري العمل",
+      "completed": "مكتملة",
+      "total_installations": "طلبات التركيب",
+      "pending_installations": "تركيبات قيد الانتظار",
+      "completed_installations": "تركيبات مكتملة"
     },
     "loading_stats": "جاري تحميل الإحصائيات...",
     "failed_stats": "فشل تحميل البيانات"
@@ -77,17 +77,17 @@
     "add_user": "إضافة مستخدم",
     "search_placeholder": "بحث بالاسم أو رقم الهاتف...",
     "roles": {
-        "all": "الكل",
-        "admin": "مدير للنظام",
-        "technician": "فني",
-        "customer": "عميل"
+      "all": "الكل",
+      "admin": "مدير للنظام",
+      "technician": "فني",
+      "customer": "عميل"
     },
     "table": {
-        "name": "الاسم",
-        "phone": "رقم الهاتف",
-        "role": "الدور",
-        "status": "الحالة",
-        "created_at": "تاريخ التسجيل"
+      "name": "الاسم",
+      "phone": "رقم الهاتف",
+      "role": "الدور",
+      "status": "الحالة",
+      "created_at": "تاريخ التسجيل"
     }
   },
   "user_details": {
@@ -137,18 +137,18 @@
     "attachments": "المرفقات والصور",
     "no_attachments": "لا يوجد صور مرفقة",
     "statuses": {
-        "pending": "قيد الانتظار",
-        "assigned": "تم الإسناد",
-        "on_way": "في الطريق",
-        "in_progress": "جاري العمل",
-        "completed": "مكتمل",
-        "canceled": "ملغي"
+      "pending": "قيد الانتظار",
+      "assigned": "تم الإسناد",
+      "on_way": "في الطريق",
+      "in_progress": "جاري العمل",
+      "completed": "مكتمل",
+      "canceled": "ملغي"
     },
     "types": {
-        "maintenance": "صيانة دورية",
-        "repair": "إصلاح عاجل",
-        "inspection": "فحص فني",
-        "installation": "تركيب جديد"
+      "maintenance": "صيانة دورية",
+      "repair": "إصلاح عاجل",
+      "inspection": "فحص فني",
+      "installation": "تركيب جديد"
     }
   },
   "settings_page": {
@@ -188,10 +188,10 @@
     "site_not_ready": "غير جاهز",
     "no_requests": "لا يوجد طلبات تركيب حالياً",
     "table": {
-        "product": "المنتج",
-        "quantity": "الكمية",
-        "location": "الموقع",
-        "site_readiness": "جاهزية الموقع"
+      "product": "المنتج",
+      "quantity": "الكمية",
+      "location": "الموقع",
+      "site_readiness": "جاهزية الموقع"
     }
   },
   "inventory": {
@@ -215,7 +215,7 @@
     "history": "سجل الطلبات",
     "live_tracking": "تتبع مباشر",
     "modal": {
-        "title": "إضافة فني جديد"
+      "title": "إضافة فني جديد"
     },
     "add_success": "تم إضافة الفني بنجاح",
     "add_error": "حدث خطأ، ربما رقم الهاتف مكرر"
@@ -253,20 +253,20 @@
     "product_info": "بيانات المنتج",
     "product_type": "نوع المنتج",
     "product_placeholder": "مثال: مطبخ ألوميتال، دولاب...",
-     "site_readiness": "حالة وجاهزية الطلب",
-     "is_site_ready": "الموقع جاهز للتركيب؟",
-     "completed_preparations": "تفاصيل التجهيزات",
-     "product_status_title": "📦 حالة المنتج",
-     "order_status_title": "تفاصيل حالة الطلب",
-     "readiness_options": {
-         "quartz": "الكوارتز",
-         "appliances": "الأجهزة",
-         "order": "الطلبية",
-         "in_stock": "في المخزن",
-         "shipping": "في الشحن",
-         "production": "في الإنتاج",
-         "on_site": "في الموقع"
-     },
+    "site_readiness": "حالة وجاهزية الطلب",
+    "is_site_ready": "الموقع جاهز للتركيب؟",
+    "completed_preparations": "تفاصيل التجهيزات",
+    "product_status_title": "📦 حالة المنتج",
+    "order_status_title": "تفاصيل حالة الطلب",
+    "readiness_options": {
+      "quartz": "الكوارتز",
+      "appliances": "الأجهزة",
+      "order": "الطلبية",
+      "in_stock": "في المخزن",
+      "shipping": "في الشحن",
+      "production": "في الإنتاج",
+      "on_site": "في الموقع"
+    },
     "site_images": "صور الموقع (اختياري)",
     "add_images": "إضافة صور",
     "location_date": "الموقع والتاريخ",
@@ -307,7 +307,8 @@
     "ready": "جاهز للتركيب",
     "not_ready": "غير جاهز",
     "problem_description": "وصف المشكلة",
-    "service_type": "نوع الخدمة"
+    "service_type": "نوع الخدمة",
+    "customer_rating": "تقييم العميل"
   },
   "status": {
     "pending": "قيد الانتظار",
@@ -318,40 +319,83 @@
     "canceled": "ملغي"
   },
   "notifications": {
-     "title": "الإشعارات",
-     "new_request_title": "طلب خدمة جديد ✨",
-     "new_request_message": "وصل طلب جديد #{{id}}: {{type}}",
-     "deadline_title": "تنبيه الموعد النهائي ⏰",
-     "deadline_message": "الطلب #{{id}} ينتهي {{when}}",
-     "sound_disabled": "الإشعارات الصوتية معطلة من الإعدادات",
-     "sound_test_success": "تم تشغيل الصوت",
-     "sound_blocked": "متصفحك يمنع تشغيل الصوت تلقائياً",
-     "test_sound": "تجربة الصوت 🔊",
-     "new_count": "{{count}} جديد",
-     "empty": "لا توجد إشعارات جديدة",
-     "clear_all": "مسح الكل"
+    "title": "الإشعارات",
+    "new_request_title": "طلب خدمة جديد ✨",
+    "new_request_message": "وصل طلب جديد #{{id}}: {{type}}",
+    "deadline_title": "تنبيه الموعد النهائي ⏰",
+    "deadline_message": "الطلب #{{id}} ينتهي {{when}}",
+    "sound_disabled": "الإشعارات الصوتية معطلة من الإعدادات",
+    "sound_test_success": "تم تشغيل الصوت",
+    "sound_blocked": "متصفحك يمنع تشغيل الصوت تلقائياً",
+    "test_sound": "تجربة الصوت 🔊",
+    "new_count": "{{count}} جديد",
+    "empty": "لا توجد إشعارات جديدة",
+    "clear_all": "مسح الكل"
   },
   "new_service_request": {
-     "title": "طلب صيانة جديد (للإدارة)",
-     "subtitle": "إضافة طلب صيانة للعميل",
-     "phone_lookup": "البحث برقم الهاتف",
-     "invalid_phone": "رقم هاتف غير صحيح",
-     "user_not_found": "المستخدم غير موجود في النظام",
-     "user_found": "تم العثور على المستخدم",
-     "linked_to_odoo": "مرتبط بـ Odoo",
-     "user_not_on_odoo": "العميل غير موجود على Odoo",
-     "odoo_warning_message": "هذا العميل غير مرتبط بحساب Odoo. يمكنك المتابعة لكن لن تتمكن من ربط الطلب بفاتورة.",
-     "continue_without_odoo": "متابعة بدون Odoo",
-     "select_order": "اختر الطلب/الفاتورة",
-     "choose_order": "اختر طلب",
-     "lookup_first": "يرجى البحث عن المستخدم أولاً",
-     "fill_required": "يرجى ملء جميع الحقول المطلوبة",
-     "images_selected": "صورة تم اختيارها",
-     "success": "تم إنشاء الطلب بنجاح!",
-     "error": "حدث خطأ أثناء إنشاء الطلب"
+    "title": "طلب صيانة جديد (للإدارة)",
+    "subtitle": "إضافة طلب صيانة للعميل",
+    "phone_lookup": "البحث برقم الهاتف",
+    "invalid_phone": "رقم هاتف غير صحيح",
+    "user_not_found": "المستخدم غير موجود في النظام",
+    "user_found": "تم العثور على المستخدم",
+    "linked_to_odoo": "مرتبط بـ Odoo",
+    "user_not_on_odoo": "العميل غير موجود على Odoo",
+    "odoo_warning_message": "هذا العميل غير مرتبط بحساب Odoo. يمكنك المتابعة لكن لن تتمكن من ربط الطلب بفاتورة.",
+    "continue_without_odoo": "متابعة بدون Odoo",
+    "select_order": "اختر الطلب/الفاتورة",
+    "choose_order": "اختر طلب",
+    "lookup_first": "يرجى البحث عن المستخدم أولاً",
+    "fill_required": "يرجى ملء جميع الحقول المطلوبة",
+    "images_selected": "صورة تم اختيارها",
+    "success": "تم إنشاء الطلب بنجاح!",
+    "error": "حدث خطأ أثناء إنشاء الطلب"
   },
   "new_installation_request": {
-     "title": "طلب تركيب جديد (للإدارة)",
-     "subtitle": "إضافة طلب تركيب للعميل"
+    "title": "طلب تركيب جديد (للإدارة)",
+    "subtitle": "إضافة طلب تركيب للعميل"
+  },
+  "manual_customer": {
+    "title": "إضافة عميل جديد (يدوي)",
+    "subtitle": "إنشاء سجل عميل محلي مع توافق يدوي لبيانات أودو",
+    "customer_info": "بيانات العميل",
+    "full_name": "الاسم الكامل",
+    "name_placeholder": "مثال: أحمد علي",
+    "orders_title": "الفواتير والطلبات",
+    "add_invoice": "إضافة فاتورة",
+    "no_invoices": "لم يتم إضافة فواتير بعد",
+    "no_invoices_hint": "اضغط على \"إضافة فاتورة\" لتسجيل بيانات أودو يدوياً",
+    "invoice_no": "رقم الفاتورة",
+    "invoice_placeholder": "مثال: INV-2024-001",
+    "template": "قالب العرض (Quotation)",
+    "template_placeholder": "مثال: Installation Service",
+    "total": "الإجمالي",
+    "paid": "المدفوع",
+    "remaining": "المتبقي",
+    "create_btn": "إنشاء العميل",
+    "fill_required": "يرجى ملء الحقول المطلوبة",
+    "success": "تم إنشاء العميل بنجاح"
+  },
+  "technician_history": {
+    "title": "سجل طلبات الفني",
+    "total_requests": "إجمالي الطلبات",
+    "completed": "المكتملة",
+    "pending": "قيد التنفيذ",
+    "request_history": "سجل الطلبات",
+    "no_requests": "لا توجد طلبات",
+    "service": "صيانة",
+    "installation": "تركيب",
+    "customer": "العميل",
+    "type": "النوع",
+    "status_pending": "قيد الانتظار",
+    "status_in_progress": "قيد التنفيذ",
+    "status_completed": "مكتمل",
+    "status_cancelled": "ملغي"
+  },
+  "rating": {
+    "product_satisfaction": "رضا العميل عن المنتج",
+    "service_satisfaction": "رضا العميل عن الخدمة",
+    "how_found_us": "كيف وجدتنا",
+    "customer_feedback": "رأي العميل"
   }
 }

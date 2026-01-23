@@ -54,4 +54,10 @@ class ServiceRequest extends Model
     {
         return $this->morphMany(RequestAttachment::class, 'attachable');
     }
+
+    public function rating()
+    {
+        return $this->hasOne(Rating::class, 'request_id')
+            ->where('request_type', 'service');
+    }
 }

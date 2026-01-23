@@ -1,22 +1,24 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { adminService } from '../services/auth';
-import { UserPlus, Star, MapPin, Phone, Shield, Settings, Eye, EyeOff, FileText } from 'lucide-react';
+import { UserPlus, Star, MapPin, Phone, Shield, Settings, Eye, EyeOff, FileText, Trash2, X } from 'lucide-react';
+import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import clsx from 'clsx';
 import api from '../services/auth';
 import { useTranslation } from 'react-i18next';
 
 export default function Technicians() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [technicians, setTechnicians] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [newTech, setNewTech] = useState({ name: '', phone: '', password: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{show: boolean, techId: number | null, loading: boolean}>({show: false, techId: null, loading: false});
 
-  // const [historyModal, setHistoryModal] = useState<{show: boolean, tech: any | null}>({show: false, tech: null});
-  // const [techHistory, setTechHistory] = useState<any[]>([]);
-  // const [historyLoading, setHistoryLoading] = useState(false);
+
 
   useEffect(() => {
     loadTechnicians();
@@ -54,11 +56,27 @@ export default function Technicians() {
     }
   };
 
-  const openHistory = async (tech: any) => {
-      // setHistoryModal({show: true, tech});
-      // setHistoryLoading(true);
-      // Implementation pending for history modal
-      console.log('Open history for', tech);
+    const handleDeleteClick = (techId: number) => {
+        setDeleteModal({ show: true, techId, loading: false });
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteModal.techId) return;
+        setDeleteModal(prev => ({ ...prev, loading: true }));
+        try {
+            const res = await api.delete(`/admin/users/${deleteModal.techId}`);
+            if (res.data.success) {
+                setDeleteModal({ show: false, techId: null, loading: false });
+                loadTechnicians();
+            }
+        } catch (error) {
+            alert(t('technicians.delete_error') || 'Failed to delete technician');
+            setDeleteModal(prev => ({ ...prev, loading: false }));
+        }
+    };
+
+  const openHistory = (tech: any) => {
+      navigate(`/dashboard/technicians/${tech.id}/history`);
   };
 
   return (
@@ -101,6 +119,13 @@ export default function Technicians() {
                         </div>
                         <button className="text-slate-400 hover:text-slate-600">
                             <Settings size={18} />
+                        </button>
+                        <button
+                            onClick={() => handleDeleteClick(tech.id)}
+                            className="text-slate-400 hover:text-red-500 transition-colors ml-2"
+                            title={t('common.delete')}
+                        >
+                            <Trash2 size={18} />
                         </button>
                     </div>
 
@@ -207,6 +232,17 @@ export default function Technicians() {
             </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModal.show}
+        onClose={() => setDeleteModal({ show: false, techId: null, loading: false })}
+        onConfirm={confirmDelete}
+        loading={deleteModal.loading}
+        title={t('technicians.delete_confirm_title') || 'Delete Technician'}
+        message={`${t('technicians.delete_confirm_msg') || 'Are you sure you want to delete'} ${technicians.find(t => t.id === deleteModal.techId)?.name || ''}?`}
+      />
+
     </div>
   );
 }

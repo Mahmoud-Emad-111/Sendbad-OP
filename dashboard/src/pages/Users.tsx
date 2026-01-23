@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { adminService } from '../services/auth';
-import { Users as UsersIcon, Search } from 'lucide-react';
+import { Users as UsersIcon, Search, UserPlus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -10,6 +10,7 @@ export default function Users() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     loadUsers();
@@ -29,7 +30,12 @@ export default function Users() {
     }
   };
 
-  const filteredUsers = users.filter(user => filter === 'all' || user.role === filter);
+  const filteredUsers = users.filter(user => {
+      const matchesRole = filter === 'all' || user.role === filter;
+      const matchesSearch = (user.name?.toLowerCase() || '').includes(search.toLowerCase()) ||
+                            (user.phone || '').includes(search);
+      return matchesRole && matchesSearch;
+  });
 
   const RoleBadge = ({ role }: { role: string }) => {
     const styles: any = {
@@ -51,8 +57,11 @@ export default function Users() {
           <h1 className="text-2xl font-bold text-slate-900">{t('users.title')}</h1>
           <p className="text-slate-500">{t('users.subtitle')}</p>
         </div>
-        <button className="bg-slate-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-800 transition-colors">
-            <UsersIcon size={18} />
+        <button
+          onClick={() => window.location.href = '/dashboard/users/new'}
+          className="bg-slate-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-800 transition-colors"
+        >
+            <UserPlus size={18} />
             {t('users.add_user')}
         </button>
       </div>
@@ -64,6 +73,8 @@ export default function Users() {
             <input
                 type="text"
                 placeholder={t('users.search_placeholder')}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 className="w-full pr-10 pl-4 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-900 rtl:pr-4 rtl:pl-10"
             />
         </div>
@@ -94,21 +105,41 @@ export default function Users() {
                         <th className="px-6 py-4 text-start">{t('users.table.name')}</th>
                         <th className="px-6 py-4 text-start">{t('users.table.phone')}</th>
                         <th className="px-6 py-4 text-start">{t('users.table.role')}</th>
+                        <th className="px-6 py-4 text-start">{t('Manual Orders')}</th>
                         <th className="px-6 py-4 text-start">{t('users.table.status')}</th>
                         <th className="px-6 py-4 text-start">{t('users.table.created_at')}</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                     {loading ? (
-                        <tr><td colSpan={5}><LoadingSpinner /></td></tr>
+                        <tr><td colSpan={6}><LoadingSpinner /></td></tr>
                     ) : filteredUsers.length === 0 ? (
-                        <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">{t('common.no_data')}</td></tr>
+                        <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500">{t('common.no_data')}</td></tr>
                     ) : (
                         filteredUsers.map(user => (
                             <tr key={user.id} className="hover:bg-slate-50 transition-colors">
                                 <td className="px-6 py-4 font-medium text-slate-900">{user.name || t('common.undefined')}</td>
                                 <td className="px-6 py-4 text-slate-600" dir="ltr">{user.phone}</td>
                                 <td className="px-6 py-4"><RoleBadge role={user.role} /></td>
+                                <td className="px-6 py-4">
+                                    {(user.manual_orders && user.manual_orders.length > 0) ? (
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded w-fit">
+                                                {user.manual_orders.length} Orders
+                                            </span>
+                                            <div className="text-[10px] text-slate-400">
+                                                {user.manual_orders.map((o:any) => o.invoice_number).join(', ')}
+                                            </div>
+                                        </div>
+                                    ) : user.invoice_number ? (
+                                        // Fallback for old single column
+                                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded w-fit">
+                                            {user.invoice_number}
+                                        </span>
+                                    ) : (
+                                        <span className="text-slate-300">-</span>
+                                    )}
+                                </td>
                                 <td className="px-6 py-4">
                                     <span className={clsx("flex items-center gap-1.5 text-xs font-semibold", user.is_active ? "text-green-600" : "text-amber-600")}>
                                         <span className={clsx("w-1.5 h-1.5 rounded-full", user.is_active ? "bg-green-500" : "bg-amber-500")}></span>
@@ -123,9 +154,6 @@ export default function Users() {
                                         {t('common.view_details')}
                                     </button>
                                 </td>
-                                <td className="px-6 py-4 text-slate-500 text-sm">
-                                    {new Date(user.created_at).toLocaleDateString(i18n.language === 'ar' ? 'ar-EG' : 'en-US')}
-                                </td>
                             </tr>
                         ))
                     )}
@@ -133,6 +161,8 @@ export default function Users() {
             </table>
         </div>
       </div>
+
+       {/* Add User Modal - Removed, moved to /users/new */}
     </div>
   );
 }

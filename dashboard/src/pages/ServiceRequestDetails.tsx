@@ -259,6 +259,190 @@ export default function ServiceRequestDetails() {
                             </div>
                         )}
                     </div>
+
+
+                    {/* Customer Rating Section - Enhanced Design */}
+                    {request.rating && request.status === 'completed' && (
+                        <div className="bg-gradient-to-br from-amber-50 via-orange-50/30 to-yellow-50/50 p-8 rounded-2xl border-2 border-amber-200/60 shadow-lg relative overflow-hidden">
+                            {/* Decorative Background Elements */}
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-200/20 rounded-full -mr-16 -mt-16"></div>
+                            <div className="absolute bottom-0 left-0 w-24 h-24 bg-orange-200/20 rounded-full -ml-12 -mb-12"></div>
+
+                            {/* Header */}
+                            <div className="relative z-10 mb-6">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2.5 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl shadow-md">
+                                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-slate-900">
+                                            {t('request_details.customer_rating')}
+                                        </h2>
+                                        <p className="text-sm text-slate-600">تقييم العميل للخدمة والمنتج</p>
+                                    </div>
+                                </div>
+
+                                {/* Overall Rating Summary */}
+                                <div className="flex items-center gap-4 mt-4 p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-amber-100">
+                                    <div className="text-center">
+                                        <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600">
+                                            {((request.rating.product_rating + request.rating.service_rating) / 2).toFixed(1)}
+                                        </div>
+                                        <div className="text-xs text-slate-500 font-medium mt-1">متوسط التقييم</div>
+                                    </div>
+                                    <div className="h-12 w-px bg-amber-200"></div>
+                                    <div className="flex gap-1">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <svg
+                                                key={star}
+                                                className={clsx("w-7 h-7 drop-shadow-md transition-transform hover:scale-110",
+                                                    star <= Math.round((request.rating.product_rating + request.rating.service_rating) / 2)
+                                                        ? "text-amber-400 fill-amber-400"
+                                                        : "text-gray-300 fill-gray-300"
+                                                )}
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                            </svg>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Rating Cards Grid */}
+                            <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                {/* Product Rating Card */}
+                                <div className="group bg-white p-5 rounded-xl border-2 border-amber-100 hover:border-amber-300 shadow-sm hover:shadow-md transition-all duration-300">
+                                    <div className="flex items-start gap-3 mb-3">
+                                        <div className="p-2 bg-amber-100 rounded-lg group-hover:bg-amber-200 transition-colors">
+                                            <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                            </svg>
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="text-sm font-semibold text-slate-700 mb-1">
+                                                {t('rating.product_satisfaction')}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex gap-0.5">
+                                                    {[1, 2, 3, 4, 5].map((star) => (
+                                                        <svg
+                                                            key={star}
+                                                            className={clsx("w-5 h-5 transition-all",
+                                                                star <= (request.rating.product_rating || 0)
+                                                                    ? "text-amber-400 fill-amber-400 drop-shadow-sm"
+                                                                    : "text-gray-300 fill-gray-300"
+                                                            )}
+                                                            viewBox="0 0 24 24"
+                                                        >
+                                                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                                        </svg>
+                                                    ))}
+                                                </div>
+                                                <span className="text-lg font-bold text-slate-900">
+                                                    {request.rating.product_rating}<span className="text-sm text-slate-500">/5</span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div
+                                            className="bg-gradient-to-r from-amber-400 to-amber-500 h-2 rounded-full transition-all duration-500"
+                                            style={{ width: `${(request.rating.product_rating / 5) * 100}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+
+                                {/* Service Rating Card */}
+                                <div className="group bg-white p-5 rounded-xl border-2 border-green-100 hover:border-green-300 shadow-sm hover:shadow-md transition-all duration-300">
+                                    <div className="flex items-start gap-3 mb-3">
+                                        <div className="p-2 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
+                                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="text-sm font-semibold text-slate-700 mb-1">
+                                                {t('rating.service_satisfaction')}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex gap-0.5">
+                                                    {[1, 2, 3, 4, 5].map((star) => (
+                                                        <svg
+                                                            key={star}
+                                                            className={clsx("w-5 h-5 transition-all",
+                                                                star <= (request.rating.service_rating || 0)
+                                                                    ? "text-green-500 fill-green-500 drop-shadow-sm"
+                                                                    : "text-gray-300 fill-gray-300"
+                                                            )}
+                                                            viewBox="0 0 24 24"
+                                                        >
+                                                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                                        </svg>
+                                                    ))}
+                                                </div>
+                                                <span className="text-lg font-bold text-slate-900">
+                                                    {request.rating.service_rating}<span className="text-sm text-slate-500">/5</span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div
+                                            className="bg-gradient-to-r from-green-400 to-green-500 h-2 rounded-full transition-all duration-500"
+                                            style={{ width: `${(request.rating.service_rating / 5) * 100}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Additional Info */}
+                            <div className="relative z-10 space-y-3">
+                                {/* How Found Us */}
+                                {request.rating.how_found_us && (
+                                    <div className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-blue-100">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                            </svg>
+                                            <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                                {t('rating.how_found_us')}
+                                            </span>
+                                        </div>
+                                        <div className="text-sm font-medium text-slate-900 bg-blue-50 px-3 py-1.5 rounded-lg inline-block">
+                                            {request.rating.how_found_us}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Customer Feedback */}
+                                {request.rating.customer_notes && (
+                                    <div className="bg-white/80 backdrop-blur-sm p-5 rounded-xl border border-purple-100">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                                            </svg>
+                                            <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                                {t('rating.customer_feedback')}
+                                            </span>
+                                        </div>
+                                        <div className="relative">
+                                            <div className="text-slate-700 leading-relaxed bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-lg border-l-4 border-purple-400">
+                                                <svg className="w-6 h-6 text-purple-200 absolute top-2 left-2" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/>
+                                                </svg>
+                                                <p className="relative z-10 italic pl-8">
+                                                    "{request.rating.customer_notes}"
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Sidebar (Left Side) */}

@@ -39,6 +39,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // List for Installation Page
     Route::get('/installation-requests', [\App\Http\Controllers\Api\InstallationRequestController::class, 'index']);
     Route::get('/installation-requests/{id}', [\App\Http\Controllers\Api\InstallationRequestController::class, 'show']);
+    Route::delete('/installation-requests/{id}', [\App\Http\Controllers\Api\InstallationRequestController::class, 'destroy']);
     Route::post('/installation-requests/{id}/status', [\App\Http\Controllers\Api\InstallationRequestController::class, 'updateStatus']);
     Route::post('/installation-requests/{id}/assign', [\App\Http\Controllers\Api\InstallationRequestController::class, 'assignTechnician']);
 
@@ -46,13 +47,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/requests/{id}', [\App\Http\Controllers\Api\ServiceRequestController::class, 'show']);
     Route::post('/requests/{id}/status', [\App\Http\Controllers\Api\ServiceRequestController::class, 'updateStatus']);
     Route::post('/requests/{id}/attachments', [\App\Http\Controllers\Api\ServiceRequestController::class, 'addAttachment']);
+    Route::delete('/requests/{id}', [\App\Http\Controllers\Api\ServiceRequestController::class, 'destroy']);
     Route::post('/requests/{id}/rate', [\App\Http\Controllers\Api\ServiceRequestController::class, 'rate']);
+
+    // Rating Endpoints (For Mobile App)
+    Route::post('/requests/{id}/rating', [\App\Http\Controllers\Api\ServiceRequestController::class, 'submitRating'])->name('service_requests.rating');
+    Route::post('/installation-requests/{id}/rating', [\App\Http\Controllers\Api\ServiceRequestController::class, 'submitRating'])->name('installation_requests.rating');
 
     // Admin Reports
     Route::get('/admin/reports/performance', [\App\Http\Controllers\Api\AdminController::class, 'getPerformanceReports']);
 
     // Admin - User Lookup for Request Creation
     Route::get('/admin/users/lookup/{phone}', [\App\Http\Controllers\Api\AdminController::class, 'lookupUserByPhone']);
+    Route::post('/admin/users', [\App\Http\Controllers\Api\AdminController::class, 'storeUser']); // <--- Added
+    Route::delete('/admin/users/{id}', [\App\Http\Controllers\Api\AdminController::class, 'deleteUser']);
 
     // Admin - Create Request on behalf of user
     Route::post('/admin/requests', [\App\Http\Controllers\Api\AdminController::class, 'createServiceRequest']);

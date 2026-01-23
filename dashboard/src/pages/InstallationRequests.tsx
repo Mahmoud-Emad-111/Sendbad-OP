@@ -4,6 +4,8 @@ import { CheckCircle, Clock, MapPin, Eye, ClipboardList, Package, User, Settings
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { Trash2 } from 'lucide-react';
+import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 
 export default function InstallationRequests() {
   const { t, i18n } = useTranslation();
@@ -11,14 +13,22 @@ export default function InstallationRequests() {
   const [loading, setLoading] = useState(true);
 
   // Filters State
+  // Filters State
   const [filters, setFilters] = useState({
       search: '',
       status: 'all',
       date_from: '',
       date_to: ''
   });
+  const [deleteModal, setDeleteModal] = useState<{show: boolean, requestId: number | null, loading: boolean}>({show: false, requestId: null, loading: false});
+  const [userRole, setUserRole] = useState<string>('');
 
   useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+        const user = JSON.parse(userStr);
+        setUserRole(user.role);
+    }
     loadRequests();
   }, []);
 
@@ -54,6 +64,28 @@ export default function InstallationRequests() {
   const handleFilterChange = (key: string, value: any) => {
       setFilters(prev => ({ ...prev, [key]: value }));
   };
+
+    const handleDeleteClick = (requestId: number) => {
+        setDeleteModal({ show: true, requestId, loading: false });
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteModal.requestId) return;
+        setDeleteModal(prev => ({ ...prev, loading: true }));
+        try {
+            const res = await api.delete(`/installation-requests/${deleteModal.requestId}`);
+            if (res.data.success) {
+                // @ts-ignore
+                // toast.success(t('requests.delete_success') || 'Request deleted successfully');
+                setDeleteModal({ show: false, requestId: null, loading: false });
+                loadRequests();
+            }
+        } catch (error) {
+             // @ts-ignore
+            // toast.error(t('requests.delete_error') || 'Failed to delete request');
+            setDeleteModal(prev => ({ ...prev, loading: false }));
+        }
+    };
 
   const StatusBadge = ({ status }: { status: string }) => {
     const styles: any = {
@@ -195,6 +227,15 @@ export default function InstallationRequests() {
                                     >
                                         <Eye size={18} />
                                     </button>
+                                    {userRole === 'admin' && (
+                                        <button
+                                            onClick={() => handleDeleteClick(req.id)}
+                                            className="text-slate-400 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-full ml-1"
+                                            title={t('common.delete')}
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    )}
                                 </td>
                             </tr>
                         ))
@@ -203,6 +244,16 @@ export default function InstallationRequests() {
             </table>
         </div>
       </div>
+
+
+        <DeleteConfirmationModal
+            isOpen={deleteModal.show}
+            onClose={() => setDeleteModal({ show: false, requestId: null, loading: false })}
+            onConfirm={confirmDelete}
+            title={t('requests.delete_confirm_title') || 'Delete Request'}
+            message={t('requests.delete_confirm_message') || 'Are you sure you want to delete this installation request? This action cannot be undone.'}
+            loading={deleteModal.loading}
+        />
     </div>
   );
 }

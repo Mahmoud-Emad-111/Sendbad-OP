@@ -138,18 +138,18 @@
     "attachments": "Attachments",
     "no_attachments": "No attachments",
     "statuses": {
-        "pending": "Pending",
-        "assigned": "Assigned",
-        "on_way": "On Way",
-        "in_progress": "In Progress",
-        "completed": "Completed",
-        "canceled": "Canceled"
+      "pending": "Pending",
+      "assigned": "Assigned",
+      "on_way": "On Way",
+      "in_progress": "In Progress",
+      "completed": "Completed",
+      "canceled": "Canceled"
     },
     "types": {
-        "maintenance": "Maintenance",
-        "repair": "Urgent Repair",
-        "inspection": "Inspection",
-        "installation": "New Installation"
+      "maintenance": "Maintenance",
+      "repair": "Urgent Repair",
+      "inspection": "Inspection",
+      "installation": "New Installation"
     }
   },
   "settings_page": {
@@ -189,10 +189,10 @@
     "site_not_ready": "Not Ready",
     "no_requests": "No installation requests found",
     "table": {
-        "product": "Product",
-        "quantity": "Quantity",
-        "location": "Location",
-        "site_readiness": "Site Readiness"
+      "product": "Product",
+      "quantity": "Quantity",
+      "location": "Location",
+      "site_readiness": "Site Readiness"
     }
   },
   "inventory": {
@@ -216,7 +216,7 @@
     "history": "Request History",
     "live_tracking": "Live Tracking",
     "modal": {
-        "title": "Add New Technician"
+      "title": "Add New Technician"
     },
     "add_success": "Technician added successfully",
     "add_error": "An error occurred, phone number might be duplicated"
@@ -254,20 +254,20 @@
     "product_info": "Product Details",
     "product_type": "Product Type",
     "product_placeholder": "Eg: Alumetal Kitchen, Cupboard...",
-     "site_readiness": "Order & Site Status",
-     "is_site_ready": "Is site ready for installation?",
-     "completed_preparations": "Preparation Details",
-     "product_status_title": "📦 Product Status",
-     "order_status_title": "Order Status Details",
-     "readiness_options": {
-         "quartz": "Quartz",
-         "appliances": "Appliances",
-         "order": "Order",
-         "in_stock": "In Stock",
-         "shipping": "In Shipping",
-         "production": "In Production",
-         "on_site": "On Site"
-     },
+    "site_readiness": "Order & Site Status",
+    "is_site_ready": "Is site ready for installation?",
+    "completed_preparations": "Preparation Details",
+    "product_status_title": "📦 Product Status",
+    "order_status_title": "Order Status Details",
+    "readiness_options": {
+      "quartz": "Quartz",
+      "appliances": "Appliances",
+      "order": "Order",
+      "in_stock": "In Stock",
+      "shipping": "In Shipping",
+      "production": "In Production",
+      "on_site": "On Site"
+    },
     "site_images": "Site Images (Optional)",
     "add_images": "Add Images",
     "location_date": "Location & Date",
@@ -308,7 +308,8 @@
     "ready": "Ready for Installation",
     "not_ready": "Not Ready",
     "problem_description": "Problem Description",
-    "service_type": "Service Type"
+    "service_type": "Service Type",
+    "customer_rating": "Customer Rating"
   },
   "status": {
     "pending": "Pending",
@@ -319,40 +320,83 @@
     "canceled": "Canceled"
   },
   "notifications": {
-     "title": "Notifications",
-     "new_request_title": "New Service Request ✨",
-     "new_request_message": "New request #{{id}} received: {{type}}",
-     "deadline_title": "Deadline Alert ⏰",
-     "deadline_message": "Request #{{id}} expires {{when}}",
-     "sound_disabled": "Sound notifications disabled in settings",
-     "sound_test_success": "Sound played successfully",
-     "sound_blocked": "Your browser blocked auto-play sound",
-     "test_sound": "Test Sound 🔊",
-     "new_count": "{{count}} new",
-     "empty": "No new notifications",
-     "clear_all": "Clear All"
+    "title": "Notifications",
+    "new_request_title": "New Service Request ✨",
+    "new_request_message": "New request #{{id}} received: {{type}}",
+    "deadline_title": "Deadline Alert ⏰",
+    "deadline_message": "Request #{{id}} expires {{when}}",
+    "sound_disabled": "Sound notifications disabled in settings",
+    "sound_test_success": "Sound played successfully",
+    "sound_blocked": "Your browser blocked auto-play sound",
+    "test_sound": "Test Sound 🔊",
+    "new_count": "{{count}} new",
+    "empty": "No new notifications",
+    "clear_all": "Clear All"
   },
   "new_service_request": {
-     "title": "New Service Request (Admin)",
-     "subtitle": "Create service request for customer",
-     "phone_lookup": "Search by Phone Number",
-     "invalid_phone": "Invalid phone number",
-     "user_not_found": "User not found in system",
-     "user_found": "User found",
-     "linked_to_odoo": "Linked to Odoo",
-     "user_not_on_odoo": "Customer not found on Odoo",
-     "odoo_warning_message": "This customer is not linked to an Odoo account. You can continue but won't be able to link to an invoice.",
-     "continue_without_odoo": "Continue without Odoo",
-     "select_order": "Select Order/Invoice",
-     "choose_order": "Choose Order",
-     "lookup_first": "Please lookup user first",
-     "fill_required": "Please fill all required fields",
-     "images_selected": "image(s) selected",
-     "success": "Request created successfully!",
-     "error": "Error creating request"
+    "title": "New Service Request (Admin)",
+    "subtitle": "Create service request for customer",
+    "phone_lookup": "Search by Phone Number",
+    "invalid_phone": "Invalid phone number",
+    "user_not_found": "User not found in system",
+    "user_found": "User found",
+    "linked_to_odoo": "Linked to Odoo",
+    "user_not_on_odoo": "Customer not found on Odoo",
+    "odoo_warning_message": "This customer is not linked to an Odoo account. You can continue but won't be able to link to an invoice.",
+    "continue_without_odoo": "Continue without Odoo",
+    "select_order": "Select Order/Invoice",
+    "choose_order": "Choose Order",
+    "lookup_first": "Please lookup user first",
+    "fill_required": "Please fill all required fields",
+    "images_selected": "image(s) selected",
+    "success": "Request created successfully!",
+    "error": "Error creating request"
   },
   "new_installation_request": {
-     "title": "New Installation Request (Admin)",
-     "subtitle": "Create installation request for customer"
+    "title": "New Installation Request (Admin)",
+    "subtitle": "Create installation request for customer"
+  },
+  "manual_customer": {
+    "title": "Add New Customer (Manual)",
+    "subtitle": "Create a local customer record with manual Odoo compatibility",
+    "customer_info": "Customer Information",
+    "full_name": "Full Name",
+    "name_placeholder": "e.g. Ahmed Ali",
+    "orders_title": "Orders & Invoices",
+    "add_invoice": "Add Invoice",
+    "no_invoices": "No invoices added yet",
+    "no_invoices_hint": "Click \"Add Invoice\" to register manual Odoo records",
+    "invoice_no": "Invoice Number",
+    "invoice_placeholder": "e.g. INV-2024-001",
+    "template": "Quotation Template",
+    "template_placeholder": "e.g. Installation Service",
+    "total": "Total Amount",
+    "paid": "Paid Amount",
+    "remaining": "Remaining",
+    "create_btn": "Create Customer",
+    "fill_required": "Please fill required fields",
+    "success": "Customer created successfully"
+  },
+  "technician_history": {
+    "title": "Technician History",
+    "total_requests": "Total Requests",
+    "completed": "Completed",
+    "pending": "In Progress",
+    "request_history": "Request History",
+    "no_requests": "No requests found",
+    "service": "Service",
+    "installation": "Installation",
+    "customer": "Customer",
+    "type": "Type",
+    "status_pending": "Pending",
+    "status_in_progress": "In Progress",
+    "status_completed": "Completed",
+    "status_cancelled": "Cancelled"
+  },
+  "rating": {
+    "product_satisfaction": "Product Satisfaction",
+    "service_satisfaction": "Service Quality",
+    "how_found_us": "How did they find us",
+    "customer_feedback": "Customer Feedback"
   }
 }

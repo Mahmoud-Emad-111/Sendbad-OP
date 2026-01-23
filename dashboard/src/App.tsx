@@ -5,6 +5,7 @@ import DashboardLayout from './layouts/DashboardLayout';
 import LiveMap from './pages/LiveMap';
 import Users from './pages/Users';
 import Technicians from './pages/Technicians';
+import TechnicianHistory from './pages/TechnicianHistory';
 import ServiceRequests from './pages/ServiceRequests';
 import ServiceRequestDetails from './pages/ServiceRequestDetails';
 import UserDetails from './pages/UserDetails';
@@ -17,6 +18,7 @@ import InstallationRequests from './pages/InstallationRequests';
 import InstallationRequestDetails from './pages/InstallationRequestDetails';
 import NewServiceRequest from './pages/NewServiceRequest';
 import NewAdminInstallationRequest from './pages/NewAdminInstallationRequest';
+import NewCustomer from './pages/NewCustomer';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -32,7 +34,9 @@ function App() {
             <Route index element={<Home />} />
             <Route path="map" element={<LiveMap />} />
             <Route path="technicians" element={<Technicians />} />
+            <Route path="technicians/:id/history" element={<TechnicianHistory />} />
             <Route path="users" element={<Users />} />
+            <Route path="users/new" element={<NewCustomer />} />
             <Route path="users/:id" element={<UserDetails />} />
             <Route path="requests" element={<ServiceRequests />} />
             <Route path="requests/new-service" element={<NewServiceRequest />} />

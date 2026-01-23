@@ -18,7 +18,7 @@ class InstallationRequestController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $query = InstallationRequest::with(['user', 'technician', 'attachments']);
+        $query = InstallationRequest::with(['user', 'technician', 'attachments', 'rating']);
 
         if ($user->role === 'customer') {
             $query->where('user_id', $user->id);
@@ -112,7 +112,7 @@ class InstallationRequestController extends Controller
 
     public function show($id)
     {
-        $request = InstallationRequest::with(['user', 'technician', 'attachments'])->findOrFail($id);
+        $request = InstallationRequest::with(['user', 'technician', 'attachments', 'rating'])->findOrFail($id);
         return response()->json(['success' => true, 'data' => $request]);
     }
 
@@ -200,6 +200,23 @@ class InstallationRequestController extends Controller
             'success' => true,
             'message' => 'Readiness details updated successfully',
             'data' => $installationRequest
+        ]);
+    }
+    /**
+     * Delete Installation Request (Admin Only)
+     */
+    public function destroy(Request $request, $id)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $installationRequest = InstallationRequest::findOrFail($id);
+        $installationRequest->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Installation request deleted successfully'
         ]);
     }
 }

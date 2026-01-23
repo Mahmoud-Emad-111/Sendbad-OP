@@ -26,6 +26,8 @@ class User extends Authenticatable
         'role',
         'fcm_token',
         'password',
+        'invoice_number',
+        'quotation_template',
     ];
 
     /**
@@ -64,5 +66,10 @@ class User extends Authenticatable
     public function assignedInstallationRequests()
     {
         return $this->hasMany(InstallationRequest::class, 'technician_id');
+    }
+
+    public function manualOrders()
+    {
+        return $this->hasMany(ManualOrder::class);
     }
 }

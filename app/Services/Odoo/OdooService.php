@@ -62,7 +62,7 @@ class OdooService implements OdooIntegrationInterface
         throw new Exception('Odoo Authentication Failed: ' . json_encode($result));
     }
 
-    public function findCustomerByPhoneOrName(string $phone, string $name): ?array
+    public function findCustomerByPhoneOrName(string $phone, ?string $name): ?array
     {
         try {
             // We use the 'execute_kw' method as specified in your requirements
@@ -80,13 +80,61 @@ class OdooService implements OdooIntegrationInterface
                  $formattedPhone = substr($phone, 0, 3) . ' ' . substr($phone, 3, 4) . ' ' . substr($phone, 7);
             }
 
-            // Using '|' (OR) operator to search for raw input OR formatted version OR Name
-            $domain = [
-                '|', '|',
-                ['phone', 'ilike', $phone],
-                ['phone', 'ilike', $formattedPhone],
-                ['name', 'ilike', $name]
-            ];
+            // 2. Short Phone (Last 8 digits) to catch format issues
+            // e.g. Input: 96899223303 -> Search: %99223303%
+            // This matches +968 9922 3303, 00968 99223303, etc.
+            $shortPhone = strlen($phone) > 8 ? substr($phone, -8) : $phone;
+
+            // Using '|' (OR) operator to search for raw input OR formatted OR shortPhone in both 'phone' and 'mobile' fields
+            if ($name) {
+                // Complex domain: (Name match) OR (Phone match raw) OR (Phone match formatted) OR (Phone match short) OR (Mobile match...)
+                // We simplify by checking Name OR (Any Phone Logic in Phone OR Mobile)
+                // Let's just pile them up with ORs
+                $domain = [
+                    '|', '|', '|', '|', '|',
+                    ['phone', 'ilike', '%' . $phone . '%'],
+                    ['phone', 'ilike', '%' . $formattedPhone . '%'],
+                    ['phone', 'ilike', '%' . $shortPhone . '%'],
+                    ['mobile', 'ilike', '%' . $phone . '%'],
+                    ['mobile', 'ilike', '%' . $formattedPhone . '%'],
+                    ['mobile', 'ilike', '%' . $shortPhone . '%'], // We need one more OR? No, wait.
+                ];
+                // Wait, structural prefix notation for N items needs N-1 ORs.
+                // We have 6 items here + Name = 7 items. So 6 ORs.
+                // Actually let's list them:
+                // 1. Name
+                // 2. Phone like phone
+                // 3. Phone like formatted
+                // 4. Phone like short
+                // 5. Mobile like phone
+                // 6. Mobile like formatted
+                // 7. Mobile like short
+
+                // Total 7 conditions -> 6 pipes ['|', '|', '|', '|', '|', '|', A, B, C, D, E, F, G]
+
+                 $domain = [
+                    '|', '|', '|', '|', '|', '|',
+                    ['name', 'ilike', '%' . $name . '%'],
+                    ['phone', 'ilike', '%' . $phone . '%'],
+                    ['phone', 'ilike', '%' . $formattedPhone . '%'],
+                    ['phone', 'ilike', '%' . $shortPhone . '%'],
+                    ['mobile', 'ilike', '%' . $phone . '%'],
+                    ['mobile', 'ilike', '%' . $formattedPhone . '%'],
+                    ['mobile', 'ilike', '%' . $shortPhone . '%']
+                ];
+
+            } else {
+                // 6 items -> 5 pipes
+                $domain = [
+                    '|', '|', '|', '|', '|',
+                    ['phone', 'ilike', '%' . $phone . '%'],
+                    ['phone', 'ilike', '%' . $formattedPhone . '%'],
+                    ['phone', 'ilike', '%' . $shortPhone . '%'],
+                    ['mobile', 'ilike', '%' . $phone . '%'],
+                    ['mobile', 'ilike', '%' . $formattedPhone . '%'],
+                    ['mobile', 'ilike', '%' . $shortPhone . '%']
+                ];
+            }
 
             $response = Http::post($this->url . '/jsonrpc', [
                 'jsonrpc' => '2.0',
