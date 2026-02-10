@@ -145,6 +145,7 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'تم تسجيل الدخول بنجاح',
             'token' => $token,
+            'type' => ucfirst($user->role),
             'user' => $user
         ]);
     }

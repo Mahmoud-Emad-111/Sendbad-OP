@@ -12,6 +12,12 @@ use Illuminate\Support\Facades\Log;
 
 class InstallationRequestController extends Controller
 {
+    protected $notificationService;
+
+    public function __construct(\App\Services\NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
     /**
      * List Installation Requests
      */
@@ -31,6 +37,7 @@ class InstallationRequestController extends Controller
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('id', 'like', "%{$search}%")
+                  ->orWhere('invoice_number', 'like', "%{$search}%")
                   ->orWhereHas('user', function($q) use ($search) {
                       $q->where('name', 'like', "%{$search}%")
                         ->orWhere('phone', 'like', "%{$search}%");
@@ -51,7 +58,7 @@ class InstallationRequestController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $query->latest()->get()
+            'data' => \App\Http\Resources\InstallationRequestResource::collection($query->latest()->get())
         ]);
     }
 
@@ -97,6 +104,27 @@ class InstallationRequestController extends Controller
 
             DB::commit();
 
+            // Notify Admins
+            $admins = \App\Models\User::where('role', 'admin')->get();
+            foreach ($admins as $admin) {
+                 if ($admin->fcm_token) {
+                     $this->notificationService->sendNotification(
+                         $admin->fcm_token,
+                         'طلب تركيب جديد 🔧',
+                         "تم استلام طلب تركيب جديد #{$installationRequest->id} من {$request->user()->name}",
+                         ['request_id' => (string) $installationRequest->id, 'type' => 'new_installation_request']
+                     );
+                 } else {
+                     \App\Models\Notification::create([
+                        'recipient_id' => $admin->id,
+                        'title' => 'طلب تركيب جديد 🔧',
+                        'body' => "تم استلام طلب تركيب جديد #{$installationRequest->id} من {$request->user()->name}",
+                        'type' => 'new_installation_request',
+                        'data' => ['request_id' => (string) $installationRequest->id, 'type' => 'new_installation_request'],
+                     ]);
+                 }
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'تم استلام طلب التركيب بنجاح',
@@ -124,6 +152,16 @@ class InstallationRequestController extends Controller
         $installationRequest->technician_accepted_at = now();
         $installationRequest->save();
 
+        // Notify customer
+        if ($installationRequest->user) {
+            $this->notificationService->sendNotification(
+                $installationRequest->user->fcm_token ?? '',
+                'تم قبول طلب التركيب 🛠️',
+                "قام الفني بقبول طلب التركيب رقم #{$installationRequest->id} وهو في الطريق إليك.",
+                ['type' => 'installation_request_update', 'request_id' => (string) $installationRequest->id]
+            );
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Request accepted successfully',
@@ -147,11 +185,38 @@ class InstallationRequestController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        $installationRequest->update(['status' => $request->status]);
+        $updates = ['status' => $request->status];
+        if ($request->status === 'completed') {
+            $updates['completed_at'] = now();
+        } elseif ($installationRequest->status === 'completed' && $request->status !== 'completed') {
+            $updates['completed_at'] = null;
+        }
 
-        // Notify Logic (Simplified)
+        $installationRequest->update($updates);
+
+
+        // Notify Logic
         if ($request->boolean('send_notification', false)) {
-            // Send notification logic here (omitted for brevity, or inject service)
+            $customer = $installationRequest->user;
+            if ($customer) {
+                $statusLabels = [
+                    'pending' => 'قيد الانتظار',
+                    'assigned' => 'تم إسناد الفني',
+                    'on_way' => 'الفني في الطريق إليك 🚚',
+                    'in_progress' => 'جاري العمل ⚙️',
+                    'completed' => 'تم التركيب بنجاح ✅',
+                    'canceled' => 'تم إلغاء الطلب ❌'
+                ];
+
+                $statusText = $statusLabels[$request->status] ?? $request->status;
+
+                $this->notificationService->sendNotification(
+                    $customer->fcm_token ?? '',
+                    'تحديث حالة الطلب 🔔',
+                    "تم تغيير حالة طلب التركيب #{$installationRequest->id} إلى: {$statusText}",
+                    ['request_id' => (string) $installationRequest->id, 'type' => 'status_update']
+                );
+            }
         }
 
         return response()->json([
@@ -175,6 +240,17 @@ class InstallationRequestController extends Controller
             'technician_id' => $request->technician_id,
             'status' => 'assigned'
         ]);
+
+        // Notify Technician
+        $technician = \App\Models\User::find($request->technician_id);
+        if ($technician && $technician->fcm_token) {
+            $this->notificationService->sendNotification(
+                $technician->fcm_token,
+                'مهمة تركيب جديدة 🛠️',
+                "تم تعيين طلب تركيب جديد لك: #{$installationRequest->id}\nالعنوان: {$installationRequest->address}\nالمنتج: {$installationRequest->product_type}",
+                ['request_id' => (string) $installationRequest->id, 'type' => 'assignment']
+            );
+        }
 
         return response()->json([
             'success' => true,
@@ -218,5 +294,35 @@ class InstallationRequestController extends Controller
             'success' => true,
             'message' => 'Installation request deleted successfully'
         ]);
+    }
+
+    /**
+     * Bulk delete installation requests
+     */
+    public function bulkDestroy(Request $request)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:installation_requests,id'
+        ]);
+
+        try {
+            $deletedCount = InstallationRequest::whereIn('id', $request->ids)->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => "$deletedCount installation request(s) deleted successfully",
+                'deleted_count' => $deletedCount
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting requests: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

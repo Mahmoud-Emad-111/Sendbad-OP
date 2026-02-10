@@ -28,14 +28,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/notifications/read', [\App\Http\Controllers\Api\NotificationController::class, 'markRead']);
 
     // Maintenance (Standard)
-    Route::post('/requests', [\App\Http\Controllers\Api\ServiceRequestController::class, 'store']);
-        // ->middleware(['financial.eligibility', 'task.readiness']);
-
+    Route::post('/requests', [\App\Http\Controllers\Api\ServiceRequestController::class, 'store'])
+        ->middleware(['check.pending']);
+// ->middleware(['financial.eligibility', 'task.readiness']);
     // Installation (New)
     // Installation (New Table)
     Route::post('/requests/installation', [\App\Http\Controllers\Api\InstallationRequestController::class, 'store'])
-        ->middleware(['financial.eligibility']);
-
+        ->middleware(['financial.eligibility', 'check.pending']);
+// ->middleware(['financial.eligibility', 'task.readiness']);
     // List for Installation Page
     Route::get('/installation-requests', [\App\Http\Controllers\Api\InstallationRequestController::class, 'index']);
     Route::get('/installation-requests/{id}', [\App\Http\Controllers\Api\InstallationRequestController::class, 'show']);
@@ -56,6 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Admin Reports
     Route::get('/admin/reports/performance', [\App\Http\Controllers\Api\AdminController::class, 'getPerformanceReports']);
+    Route::get('/admin/reports/daily-activity', [\App\Http\Controllers\Api\AdminController::class, 'getDailyCompletedRequests']);
 
     // Admin - User Lookup for Request Creation
     Route::get('/admin/users/lookup/{phone}', [\App\Http\Controllers\Api\AdminController::class, 'lookupUserByPhone']);
@@ -72,4 +73,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/technician/schedule', [\App\Http\Controllers\Api\ServiceRequestController::class, 'getMySchedule']);
     Route::post('/technician/installation-requests/accept', [\App\Http\Controllers\Api\InstallationRequestController::class, 'acceptRequest']);
     Route::post('/technician/service-requests/accept', [\App\Http\Controllers\Api\ServiceRequestController::class, 'acceptRequest']);
+
+    // Bulk Delete Operations
+    Route::post('/admin/users/bulk-delete', [\App\Http\Controllers\Api\AdminController::class, 'bulkDeleteUsers']);
+    Route::post('/requests/bulk-delete', [\App\Http\Controllers\Api\ServiceRequestController::class, 'bulkDestroy']);
+    Route::post('/installation-requests/bulk-delete', [\App\Http\Controllers\Api\InstallationRequestController::class, 'bulkDestroy']);
 });

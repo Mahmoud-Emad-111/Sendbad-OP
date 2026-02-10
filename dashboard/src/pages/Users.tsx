@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
 import { adminService } from '../services/auth';
-import { Users as UsersIcon, Search, UserPlus } from 'lucide-react';
+import { Search, UserPlus, Trash2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import LoadingSpinner from '../components/LoadingSpinner';
+import api from '../services/auth';
 
 export default function Users() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -36,6 +39,58 @@ export default function Users() {
                             (user.phone || '').includes(search);
       return matchesRole && matchesSearch;
   });
+
+  const toggleUser = (userId: number) => {
+    setSelectedUsers(prev =>
+      prev.includes(userId)
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const toggleAll = () => {
+    if (selectedUsers.length === filteredUsers.length) {
+      setSelectedUsers([]);
+    } else {
+      setSelectedUsers(filteredUsers.map(u => u.id));
+    }
+  };
+
+  const deleteSingle = async (userId: number) => {
+    if (!confirm(t('Are you sure you want to delete this user?'))) return;
+
+    try {
+      setDeleting(true);
+      const res = await api.delete(`/admin/users/${userId}`);
+      if (res.data.success) {
+        setUsers(prev => prev.filter(u => u.id !== userId));
+        alert(t('User deleted successfully'));
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Error deleting user');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const deleteSelected = async () => {
+    if (selectedUsers.length === 0) return;
+    if (!confirm(t(`Delete ${selectedUsers.length} selected user(s)?`))) return;
+
+    try {
+      setDeleting(true);
+      const res = await api.post('/admin/users/bulk-delete', { ids: selectedUsers });
+      if (res.data.success) {
+        setUsers(prev => prev.filter(u => !selectedUsers.includes(u.id)));
+        setSelectedUsers([]);
+        alert(res.data.message);
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Error deleting users');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const RoleBadge = ({ role }: { role: string }) => {
     const styles: any = {
@@ -65,6 +120,32 @@ export default function Users() {
             {t('users.add_user')}
         </button>
       </div>
+
+      {/* Bulk Actions Toolbar */}
+      {selectedUsers.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-blue-900 font-medium">
+              {selectedUsers.length} {t('selected')}
+            </span>
+            <button
+              onClick={() => setSelectedUsers([])}
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+            >
+              <X size={16} />
+              {t('common.cancel')}
+            </button>
+          </div>
+          <button
+            onClick={deleteSelected}
+            disabled={deleting}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-700 transition-colors disabled:opacity-50"
+          >
+            <Trash2 size={16} />
+            {deleting ? t('common.deleting') + '...' : t('Delete Selected')}
+          </button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 flex flex-wrap gap-4 items-center">
@@ -102,22 +183,38 @@ export default function Users() {
             <table className="w-full text-start">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-medium text-sm">
                     <tr>
+                        <th className="px-6 py-4 text-start">
+                          <input
+                            type="checkbox"
+                            checked={selectedUsers.length === filteredUsers.length && filteredUsers.length > 0}
+                            onChange={toggleAll}
+                            className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                          />
+                        </th>
                         <th className="px-6 py-4 text-start">{t('users.table.name')}</th>
                         <th className="px-6 py-4 text-start">{t('users.table.phone')}</th>
                         <th className="px-6 py-4 text-start">{t('users.table.role')}</th>
                         <th className="px-6 py-4 text-start">{t('Manual Orders')}</th>
                         <th className="px-6 py-4 text-start">{t('users.table.status')}</th>
-                        <th className="px-6 py-4 text-start">{t('users.table.created_at')}</th>
+                        <th className="px-6 py-4 text-start">{t('common.actions')}</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                     {loading ? (
-                        <tr><td colSpan={6}><LoadingSpinner /></td></tr>
+                        <tr><td colSpan={7}><LoadingSpinner /></td></tr>
                     ) : filteredUsers.length === 0 ? (
-                        <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500">{t('common.no_data')}</td></tr>
+                        <tr><td colSpan={7} className="px-6 py-8 text-center text-slate-500">{t('common.no_data')}</td></tr>
                     ) : (
                         filteredUsers.map(user => (
                             <tr key={user.id} className="hover:bg-slate-50 transition-colors">
+                                <td className="px-6 py-4">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedUsers.includes(user.id)}
+                                    onChange={() => toggleUser(user.id)}
+                                    className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                                  />
+                                </td>
                                 <td className="px-6 py-4 font-medium text-slate-900">{user.name || t('common.undefined')}</td>
                                 <td className="px-6 py-4 text-slate-600" dir="ltr">{user.phone}</td>
                                 <td className="px-6 py-4"><RoleBadge role={user.role} /></td>
@@ -132,7 +229,6 @@ export default function Users() {
                                             </div>
                                         </div>
                                     ) : user.invoice_number ? (
-                                        // Fallback for old single column
                                         <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded w-fit">
                                             {user.invoice_number}
                                         </span>
@@ -147,12 +243,22 @@ export default function Users() {
                                     </span>
                                 </td>
                                 <td className="px-6 py-4">
-                                    <button
-                                        onClick={() => window.location.href = `/dashboard/users/${user.id}`}
-                                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                                    >
-                                        {t('common.view_details')}
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                          onClick={() => window.location.href = `/dashboard/users/${user.id}`}
+                                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                      >
+                                          {t('common.view_details')}
+                                      </button>
+                                      <button
+                                          onClick={() => deleteSingle(user.id)}
+                                          disabled={deleting}
+                                          className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                                          title={t('common.delete')}
+                                      >
+                                          <Trash2 size={16} />
+                                      </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))
@@ -161,8 +267,6 @@ export default function Users() {
             </table>
         </div>
       </div>
-
-       {/* Add User Modal - Removed, moved to /users/new */}
     </div>
   );
 }

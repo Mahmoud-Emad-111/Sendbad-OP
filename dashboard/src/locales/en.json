@@ -49,7 +49,13 @@
     "updating": "Updating...",
     "quantity": "Quantity",
     "already": "already",
-    "today": "today"
+    "today": "today",
+    "deleting": "Deleting",
+    "selected": "selected"
+  },
+  "branding": {
+    "app_name": "Sindbad",
+    "tagline": "Dashboard"
   },
   "home": {
     "title": "Dashboard",
@@ -219,7 +225,10 @@
       "title": "Add New Technician"
     },
     "add_success": "Technician added successfully",
-    "add_error": "An error occurred, phone number might be duplicated"
+    "add_error": "An error occurred, phone number might be duplicated",
+    "delete_confirm_title": "Delete Technician",
+    "delete_confirm_msg": "Are you sure you want to delete",
+    "delete_error": "Failed to delete technician"
   },
   "reports": {
     "title": "Performance Reports",
@@ -236,6 +245,16 @@
   "live_map": {
     "title": "Live Tracking",
     "online": "Online"
+  },
+  "tracking": {
+    "technician_offline": "Technician is currently offline",
+    "no_location_data": "No location data available",
+    "technicians_online": "Technicians Online",
+    "live_technician_tracking": "Live Technician Tracking",
+    "technician_location": "Technician Location",
+    "realtime_from_firebase": "Real-time locations from Firebase",
+    "select_all": "Select All",
+    "delete_selected": "Delete Selected"
   },
   "login": {
     "title": "Login",

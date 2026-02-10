@@ -49,7 +49,13 @@
     "updating": "جاري التحديث...",
     "quantity": "الكمية",
     "already": "بالفعل",
-    "today": "اليوم"
+    "today": "اليوم",
+    "deleting": "جاري الحذف",
+    "selected": "محدد"
+  },
+  "branding": {
+    "app_name": "سندباد",
+    "tagline": "لوحة التحكم"
   },
   "home": {
     "title": "لوحة التحكم",
@@ -218,7 +224,10 @@
       "title": "إضافة فني جديد"
     },
     "add_success": "تم إضافة الفني بنجاح",
-    "add_error": "حدث خطأ، ربما رقم الهاتف مكرر"
+    "add_error": "حدث خطأ، ربما رقم الهاتف مكرر",
+    "delete_confirm_title": "حذف الفني",
+    "delete_confirm_msg": "هل أنت متأكد من حذف",
+    "delete_error": "فشل في حذف الفني"
   },
   "reports": {
     "title": "تقارير الأداء",
@@ -235,6 +244,16 @@
   "live_map": {
     "title": "تتبع المناديب (Live Tracking)",
     "online": "متصل بالشبكة"
+  },
+  "tracking": {
+    "technician_offline": "الفني غير متصل حالياً",
+    "no_location_data": "لا تتوفر بيانات الموقع",
+    "technicians_online": "فني متصل",
+    "live_technician_tracking": "تتبع الفنيين المباشر",
+    "technician_location": "موقع الفني",
+    "realtime_from_firebase": "بيانات مباشرة من Firebase",
+    "select_all": "تحديد الكل",
+    "delete_selected": "حذف المحددة"
   },
   "login": {
     "title": "تسجيل الدخول",

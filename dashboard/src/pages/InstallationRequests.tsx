@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/auth';
 import { CheckCircle, Clock, MapPin, Eye, ClipboardList, Package, User, Settings, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { Trash2 } from 'lucide-react';
+import { Trash2, X } from 'lucide-react';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 
 export default function InstallationRequests() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -21,6 +23,8 @@ export default function InstallationRequests() {
       date_to: ''
   });
   const [deleteModal, setDeleteModal] = useState<{show: boolean, requestId: number | null, loading: boolean}>({show: false, requestId: null, loading: false});
+  const [selectedRequests, setSelectedRequests] = useState<number[]>([]);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
 
   useEffect(() => {
@@ -129,6 +133,46 @@ export default function InstallationRequests() {
         </button>
       </div>
 
+      {/* Bulk Actions Toolbar */}
+      {selectedRequests.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-blue-900 font-medium">
+              {selectedRequests.length} {t('selected')}
+            </span>
+            <button
+              onClick={() => setSelectedRequests([])}
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1">
+              <X size={16} />
+              {t('common.cancel')}
+            </button>
+          </div>
+          <button
+            onClick={async () => {
+              if (!confirm(t(`Delete ${selectedRequests.length} selected request(s)?`))) return;
+              try {
+                setBulkDeleting(true);
+                const res = await api.post('/installation-requests/bulk-delete', { ids: selectedRequests });
+                if (res.data.success) {
+                  loadRequests();
+                  setSelectedRequests([]);
+                  // toast.success(res.data.message); // If toast is available
+                  alert(res.data.message);
+                }
+              } catch (error: any) {
+                alert(error.response?.data?.message || 'Error deleting requests');
+              } finally {
+                setBulkDeleting(false);
+              }
+            }}
+            disabled={bulkDeleting}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-700 transition-colors disabled:opacity-50">
+            <Trash2 size={16} />
+            {bulkDeleting ? t('common.deleting') + '...' : t('Delete Selected')}
+          </button>
+        </div>
+      )}
+
       {/* Filter Toolbar */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-4">
            {/* Search */}
@@ -171,6 +215,20 @@ export default function InstallationRequests() {
             <table className="w-full text-start">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-medium text-sm">
                     <tr>
+                        <th className="px-6 py-4 text-start">
+                          <input
+                            type="checkbox"
+                            checked={selectedRequests.length === requests.length && requests.length > 0}
+                            onChange={() => {
+                              if (selectedRequests.length === requests.length) {
+                                setSelectedRequests([]);
+                              } else {
+                                setSelectedRequests(requests.map((r: any) => r.id));
+                              }
+                            }}
+                            className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                          />
+                        </th>
                         <th className="px-6 py-4 text-start">{t('user_details.request_id')}</th>
                         <th className="px-6 py-4 text-start">{t('installation.table.product')} / {t('new_service_request.invoice_number')}</th>
                         <th className="px-6 py-4 text-start">{t('installation.table.quantity')}</th>
@@ -189,6 +247,20 @@ export default function InstallationRequests() {
                     ) : (
                         requests.map(req => (
                             <tr key={req.id} className="hover:bg-slate-50 transition-colors">
+                                <td className="px-6 py-4">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedRequests.includes(req.id)}
+                                    onChange={() => {
+                                      setSelectedRequests(prev =>
+                                        prev.includes(req.id)
+                                          ? prev.filter(id => id !== req.id)
+                                          : [...prev, req.id]
+                                      );
+                                    }}
+                                    className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                                  />
+                                </td>
                                 <td className="px-6 py-4 font-mono text-slate-500">#{req.id}</td>
                                 <td className="px-6 py-4 font-medium text-slate-900">
                                     <div className="flex items-center gap-2">
@@ -221,7 +293,7 @@ export default function InstallationRequests() {
                                 <td className="px-6 py-4"><StatusBadge status={req.status} /></td>
                                 <td className="px-6 py-4">
                                     <button
-                                        onClick={() => window.location.href = `/dashboard/requests/installation/${req.id}`}
+                                        onClick={() => navigate(`/dashboard/requests/installation/${req.id}`)}
                                         className="text-slate-400 hover:text-blue-600 transition-colors p-2 hover:bg-blue-50 rounded-full"
                                         title={t('common.view_details')}
                                     >

@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../services/auth';
+import api, { getBaseUrl } from '../services/auth';
 import { Calendar, User, Settings, AlertCircle, CheckCircle, Clock, MapPin, ArrowRight, Package, X } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import clsx from 'clsx';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useTranslation } from 'react-i18next';
-
-const API_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace('/api', '');
 
 const containerStyle = {
     width: '100%',
@@ -386,12 +384,12 @@ export default function InstallationRequestDetails() {
                                 {request.attachments.map((img: any) => (
                                     <div key={img.id} className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 group cursor-pointer">
                                         <img
-                                            src={`${API_URL}/storage/${img.file_path}`}
+                                            src={`${getBaseUrl()}/storage/${img.file_path}`}
                                             alt="Request Attachment"
                                             className="w-full h-full object-cover transition-transform group-hover:scale-105"
                                         />
                                         <a
-                                            href={`${API_URL}/storage/${img.file_path}`}
+                                            href={`${getBaseUrl()}/storage/${img.file_path}`}
                                             target="_blank"
                                             rel="noreferrer"
                                             className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-medium"

@@ -173,6 +173,7 @@ class ServiceRequestController extends Controller
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('id', 'like', "%{$search}%")
+                  ->orWhere('invoice_number', 'like', "%{$search}%")
                   ->orWhereHas('user', function($q) use ($search) {
                       $q->where('name', 'like', "%{$search}%")
                         ->orWhere('phone', 'like', "%{$search}%");
@@ -207,12 +208,9 @@ class ServiceRequestController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $requests
+            'data' => \App\Http\Resources\ServiceRequestResource::collection($requests)
         ]);
-        return response()->json([
-            'success' => true,
-            'data' => $requests
-        ]);
+
     }
 
     /**
@@ -278,6 +276,60 @@ class ServiceRequestController extends Controller
                          \Illuminate\Support\Facades\Log::error('Image Upload Error: ' . $e->getMessage());
                     }
                 }
+            }
+
+            // Notify Admins
+            $admins = User::where('role', 'admin')->get();
+            foreach ($admins as $admin) {
+                // If admin has FCM token, send push. Otherwise, it just creates a DB record via sendNotification logic if we modify it,
+                // but currently sendNotification requires a token or we can adapt it.
+                // Actually NotificationService stores to DB first, then checks token.
+                // We should pass a valid token if available, or just null/dummy if we want DB only?
+                // The service implementation: $recipient = User::where('fcm_token', $fcmToken)->first();
+                // This relies on token lookup! We should probably improve NotificationService or just pass the User object directly if possible on a refactor.
+                // For now, let's use the token if exists, otherwise, we might skip push but we WANT DB notification.
+                // Looking at NotificationService again:
+                // public function sendNotification(string $fcmToken, ...)
+                // $recipient = User::where('fcm_token', $fcmToken)->first();
+                // This is bad design if user has no token.
+
+                // WAIT! I need to check NotificationService again.
+                // Converting implementation plan to REALITY:
+                // I will update NotificationService to accept User object OR token.
+            }
+            // For now, let's stick to the controller logic and I will refactor NotificationService in a separate step if needed.
+            // But to avoid breaking, I will wrap it.
+
+            // Let's assume admins might have tokens. If not, we still want the DB record.
+            // Problem: NotificationService::sendNotification takes string $fcmToken as first arg.
+            // And it finds user BY token.
+            // public function sendNotification(string $fcmToken, string $title, string $body, array $data = []): bool
+            // { ... $recipient = User::where('fcm_token', $fcmToken)->first(); ... }
+
+            // If I pass an empty string, it won't find the user, so 'recipient_id' will be null.
+            // So DB notification will be orphan.
+
+            // FIX: I MUST REFACTOR NotificationService first or create a helper method.
+            // OR I can manually create the notification record here for admins without tokens.
+
+            foreach ($admins as $admin) {
+                 if ($admin->fcm_token) {
+                     $this->notificationService->sendNotification(
+                         $admin->fcm_token,
+                         'طلب صيانة جديد 🆕',
+                         "تم استلام طلب صيانة جديد #{$serviceRequest->id} من {$request->user()->name}",
+                         ['request_id' => (string) $serviceRequest->id, 'type' => 'new_request']
+                     );
+                 } else {
+                     // Manual DB Entry for Admin without Token (so he sees it in dashboard)
+                     \App\Models\Notification::create([
+                        'recipient_id' => $admin->id,
+                        'title' => 'طلب صيانة جديد 🆕',
+                        'body' => "تم استلام طلب صيانة جديد #{$serviceRequest->id} من {$request->user()->name}",
+                        'type' => 'new_request',
+                        'data' => ['request_id' => (string) $serviceRequest->id, 'type' => 'new_request'],
+                     ]);
+                 }
             }
 
             DB::commit();
@@ -574,5 +626,35 @@ class ServiceRequestController extends Controller
             'success' => true,
             'message' => 'Service request deleted successfully'
         ]);
+    }
+
+    /**
+     * Bulk delete service requests
+     */
+    public function bulkDestroy(Request $request)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:service_requests,id'
+        ]);
+
+        try {
+            $deletedCount = \App\Models\ServiceRequest::whereIn('id', $request->ids)->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => "$deletedCount request(s) deleted successfully",
+                'deleted_count' => $deletedCount
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting requests: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

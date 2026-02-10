@@ -533,4 +533,104 @@ class AdminController extends Controller
             'message' => 'User deleted successfully'
         ]);
     }
+
+    /**
+     * Bulk delete users
+     */
+    public function bulkDeleteUsers(Request $request)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:users,id'
+        ]);
+
+        try {
+            $ids = $request->ids;
+            $currentUserId = $request->user()->id;
+
+            // Remove current user from deletion list
+            $ids = array_filter($ids, function($id) use ($currentUserId) {
+                return $id != $currentUserId;
+            });
+
+            if (empty($ids)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete your own account'
+                ], 403);
+            }
+
+            // Soft delete users
+            $deletedCount = User::whereIn('id', $ids)->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => "$deletedCount user(s) deleted successfully",
+                'deleted_count' => $deletedCount
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting users: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    /**
+     * Get Daily Completed Requests for Reports
+     */
+    public function getDailyCompletedRequests(Request $request)
+    {
+        $request->validate([
+            'date' => 'required|date'
+        ]);
+
+        $date = $request->date;
+
+        // Maintenance (Service Requests)
+        $maintenance = \App\Models\ServiceRequest::with(['user', 'technician'])
+            ->where('status', 'completed')
+            ->whereDate('completed_at', $date)
+            ->get()
+            ->map(function ($req) {
+                return [
+                    'id' => $req->id,
+                    'type' => 'maintenance',
+                    'service_type' => $req->service_type,
+                    'completed_at' => $req->completed_at,
+                    'technician_name' => $req->technician ? $req->technician->name : 'N/A',
+                    'customer_name' => $req->user ? $req->user->name : 'N/A',
+                    'rating' => $req->rating,
+                    'invoice_number' => $req->invoice_number
+                ];
+            });
+
+        // Installation Requests
+        $installation = \App\Models\InstallationRequest::with(['user', 'technician'])
+            ->where('status', 'completed')
+            ->whereDate('completed_at', $date)
+            ->get()
+            ->map(function ($req) {
+                return [
+                    'id' => $req->id,
+                    'type' => 'installation',
+                    'product_type' => $req->product_type,
+                    'completed_at' => $req->completed_at,
+                    'technician_name' => $req->technician ? $req->technician->name : 'N/A',
+                    'customer_name' => $req->user ? $req->user->name : 'N/A',
+                    'rating' => $req->rating, // Ensure relation exists or adjust
+                     'invoice_number' => $req->invoice_number
+                ];
+            });
+
+        $all = $maintenance->merge($installation)->sortByDesc('completed_at')->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $all
+        ]);
+    }
 }

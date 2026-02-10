@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/auth';
-import { Calendar, User, Settings, AlertCircle, CheckCircle, Clock, Eye, X, Filter, Search as SearchIcon, RotateCcw, Trash2 } from 'lucide-react';
+import { User, Settings, AlertCircle, CheckCircle, Clock, Eye, X, Filter, Search as SearchIcon, RotateCcw, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
@@ -8,7 +9,8 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 
 export default function ServiceRequests() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  const navigate = useNavigate();
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [technicians, setTechnicians] = useState<any[]>([]);
@@ -26,8 +28,9 @@ export default function ServiceRequests() {
     const [assignModal, setAssignModal] = useState<{show: boolean, requestId: number | null}>({show: false, requestId: null});
     const [assignDates, setAssignDates] = useState({ start: '', end: '' });
     const [selectedTech, setSelectedTech] = useState('');
-    const [viewModal, setViewModal] = useState<{show: boolean, request: any | null}>({show: false, request: null});
     const [deleteModal, setDeleteModal] = useState<{show: boolean, requestId: number | null, loading: boolean}>({show: false, requestId: null, loading: false});
+    const [selectedRequests, setSelectedRequests] = useState<number[]>([]);
+    const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // ... inside component ...
   const [userRole, setUserRole] = useState<string>('');
@@ -124,15 +127,6 @@ export default function ServiceRequests() {
         }
     };
 
-    const handleAssignClick = (req: any) => {
-        const sDate = req.scheduled_at ? new Date(req.scheduled_at).toISOString().split('T')[0] : '';
-        const eDate = req.end_date ? new Date(req.end_date).toISOString().split('T')[0] : sDate;
-
-        setAssignDates({ start: sDate, end: eDate });
-        setAssignModal({show: true, requestId: req.id});
-        fetchTechnicians(sDate, eDate);
-    };
-
     const handleDateChange = (key: 'start' | 'end', value: string) => {
          setAssignDates(prev => {
             const newDates = { ...prev, [key]: value };
@@ -161,10 +155,6 @@ export default function ServiceRequests() {
         } catch (error) {
             toast.error(t('requests.assign_error'));
         }
-    };
-
-    const handleDeleteClick = (requestId: number) => {
-        setDeleteModal({ show: true, requestId, loading: false });
     };
 
     const confirmDelete = async () => {
@@ -204,6 +194,9 @@ export default function ServiceRequests() {
       );
   };
 
+  /* Client-side filtering removed to fix missing data issue. Server handles filtering. */
+  const filteredRequests = requests;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -219,6 +212,45 @@ export default function ServiceRequests() {
             {t('requests.new_request')}
         </button>
       </div>
+
+      {/* Bulk Actions Toolbar */}
+      {selectedRequests.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-blue-900 font-medium">
+              {selectedRequests.length} {t('selected')}
+            </span>
+            <button
+              onClick={() => setSelectedRequests([])}
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1">
+              <X size={16} />
+              {t('common.cancel')}
+            </button>
+          </div>
+          <button
+            onClick={async () => {
+              if (!confirm(t(`Delete ${selectedRequests.length} selected request(s)?`))) return;
+              try {
+                setBulkDeleting(true);
+                const res = await api.post('/requests/bulk-delete', { ids: selectedRequests });
+                if (res.data.success) {
+                  loadRequests();
+                  setSelectedRequests([]);
+                  toast.success(res.data.message);
+                }
+              } catch (error: any) {
+                toast.error(error.response?.data?.message || 'Error deleting requests');
+              } finally {
+                setBulkDeleting(false);
+              }
+            }}
+            disabled={bulkDeleting}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-700 transition-colors disabled:opacity-50">
+            <Trash2 size={16} />
+            {bulkDeleting ? t('common.deleting') + '...' : t('Delete Selected')}
+          </button>
+        </div>
+      )}
 
       {/* Filter Toolbar */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
@@ -317,219 +349,101 @@ export default function ServiceRequests() {
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-            <table className="w-full text-start">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-medium text-sm">
-                    <tr>
-                        <th className="px-6 py-4 text-start">{t('user_details.request_id')}</th>
-                        <th className="px-6 py-4 text-start">{t('common.name')}</th>
-                        <th className="px-6 py-4 text-start">{t('user_details.service_type')}</th>
-                        <th className="px-6 py-4 text-start">{t('requests.invoice_number')}</th>
-                        <th className="px-6 py-4 text-start">{t('common.address')}</th>
-                        <th className="px-6 py-4 text-start">{t('requests.scheduled_at')}</th>
-                        <th className="px-6 py-4 text-start">{t('common.status')}</th>
-                        <th className="px-6 py-4 text-start">{t('requests.technician')}</th>
-                        <th className="px-6 py-4 text-start">{t('common.actions')}</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                    {loading ? (
-                        <tr><td colSpan={8}><LoadingSpinner /></td></tr>
-                    ) : requests.length === 0 ? (
-                        <tr><td colSpan={8} className="px-6 py-8 text-center text-slate-500">{t('common.no_data')}</td></tr>
-                    ) : (
-                        requests.map(req => (
-                            <tr key={req.id} className="hover:bg-slate-50 transition-colors">
-                                <td className="px-6 py-4 font-mono text-slate-500">#{req.id}</td>
-                                <td className="px-6 py-4 font-medium text-slate-900">{req.user?.name}</td>
-                                <td className="px-6 py-4 text-slate-600">
-                                    {t(`requests.types.${req.service_type}`) || req.service_type}
-                                </td>
-                                <td className="px-6 py-4 font-mono text-sm text-slate-600">{req.invoice_number || '-'}</td>
-                                <td className="px-6 py-4 text-slate-500 truncate max-w-xs" title={req.address}>{req.address}</td>
-                                <td className="px-6 py-4 text-slate-600">
-                                    <div className="flex items-center gap-1.5 text-xs bg-slate-100 px-2 py-1 rounded w-fit">
-                                        <Calendar size={14} />
-                                        <span dir="ltr">{new Date(req.scheduled_at).toLocaleDateString()}</span>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4"><StatusBadge status={req.status} /></td>
-                                <td className="px-6 py-4 text-slate-600">
-                                    {req.technician ? (
-                                        <span className="flex items-center gap-1">
-                                            <User size={14} className="text-blue-500" />
-                                            {req.technician.name}
-                                        </span>
-                                    ) : (
-                                        <span className="text-slate-400 text-xs italic">{t('requests.not_assigned')}</span>
-                                    )}
-                                </td>
-                                <td className="px-6 py-4">
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => window.location.href = `/dashboard/requests/${req.id}`}
-                                        className="text-slate-400 hover:text-blue-600 transition-colors p-1"
-                                        title={t('common.view_details')}
-                                    >
-                                        <Eye size={18} />
-                                    </button>
-                                    {req.status === 'pending' && userRole === 'admin' && (
-                                        <button
-                                            onClick={() => handleAssignClick(req)}
-                                            className="text-xs bg-slate-900 text-white px-3 py-1.5 rounded hover:bg-slate-800 transition-colors ml-2"
-                                        >
-                                            {t('requests.assign_technician')}
-                                        </button>
-                                    )}
-
-                                    {userRole === 'admin' && (
-                                        <button
-                                            onClick={() => handleDeleteClick(req.id)}
-                                            className="text-slate-400 hover:text-red-600 transition-colors p-1"
-                                            title={t('common.delete')}
-                                        >
-                                           <Trash2 size={18} />
-                                        </button>
-                                    )}
-                                </div>
-                            </td>
-                        </tr>
-                    ))
-                )}
-            </tbody>
-        </table>
+          <div className="overflow-x-auto">
+              <table className="w-full">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                          <th className="px-4 py-3 text-start">
+                            <input
+                              type="checkbox"
+                              checked={selectedRequests.length === filteredRequests.length && filteredRequests.length > 0}
+                              onChange={() => {
+                                if (selectedRequests.length === filteredRequests.length) {
+                                  setSelectedRequests([]);
+                                } else {
+                                  setSelectedRequests(filteredRequests.map((r: any) => r.id));
+                                }
+                              }}
+                              className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                            />
+                          </th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-slate-700 uppercase tracking-wider">#{t('ID')}</th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-slate-700 uppercase tracking-wider">{t('requests.table.customer')}</th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-slate-700 uppercase tracking-wider">{t('requests.service_type')}</th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-slate-700 uppercase tracking-wider">{t('requests.table.status')}</th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-slate-700 uppercase tracking-wider">{t('requests.technician')}</th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-slate-700 uppercase tracking-wider">{t('requests.scheduled_at')}</th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-slate-700 uppercase tracking-wider">{t('common.actions')}</th>
+                      </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                      {loading ? (
+                          <tr><td colSpan={8} className="text-center py-8"><LoadingSpinner /></td></tr>
+                      ) : filteredRequests.length === 0 ? (
+                          <tr><td colSpan={8} className="text-center py-8 text-slate-500">{t('common.no_data')}</td></tr>
+                      ) : (
+                          filteredRequests.map((req: any) => (
+                              <tr key={req.id} className="hover:bg-slate-50 transition-colors">
+                                  <td className="px-4 py-3">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedRequests.includes(req.id)}
+                                      onChange={() => {
+                                        setSelectedRequests(prev =>
+                                          prev.includes(req.id)
+                                            ? prev.filter(id => id !== req.id)
+                                            : [...prev, req.id]
+                                        );
+                                      }}
+                                      className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-3 font-mono text-sm text-slate-600">#{req.id}</td>
+                                  <td className="px-4 py-3">
+                                      <div className="flex items-center gap-2">
+                                          <User className="text-slate-400" size={16} />
+                                          <span className="text-sm font-medium text-slate-900">{req.user?.name || t('common.undefined')}</span>
+                                      </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-600">{req.service_type || '-'}</td>
+                                  <td className="px-4 py-3"><StatusBadge status={req.status} /></td>
+                                  <td className="px-4 py-3 text-sm text-slate-600">{req.technician?.name || t('requests.not_assigned')}</td>
+                                  <td className="px-4 py-3 text-sm text-slate-600" dir="ltr">{req.scheduled_at ? new Date(req.scheduled_at).toLocaleDateString() : '-'}</td>
+                                  <td className="px-4 py-3">
+                                      <div className="flex items-center gap-2">
+                                          <button
+                                              onClick={() => navigate(`/dashboard/requests/${req.id}`)}
+                                              className="text-slate-400 hover:text-blue-600 transition-colors p-2 hover:bg-blue-50 rounded-full"
+                                              title={t('common.view_details')}
+                                          >
+                                              <Eye size={18} />
+                                          </button>
+                                          {userRole === 'admin' && (
+                                              <>
+                                                  <button onClick={() => setAssignModal({show: true, requestId: req.id})} className="text-green-600 hover:text-green-800">
+                                                      <Settings size={18} />
+                                                  </button>
+                                                  <button
+                                                    onClick={() => setDeleteModal({show: true, requestId: req.id, loading: false})}
+                                                    className="text-red-600 hover:text-red-800"
+                                                    title={t('common.delete')}>
+                                                      <Trash2 size={18} />
+                                                  </button>
+                                              </>
+                                          )}
+                                      </div>
+                                  </td>
+                              </tr>
+                          ))
+                      )}
+                  </tbody>
+              </table>
+          </div>
       </div>
-    </div>
 
 
-      {/* View Details Modal */}
-      {viewModal.show && viewModal.request && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
-                    <div>
-                        <h2 className="text-xl font-bold text-slate-900">{t('requests.request_details')} #{viewModal.request.id}</h2>
-                        <span className="text-sm text-slate-500">{t('common.created_at')}: {new Date(viewModal.request.created_at).toLocaleDateString(i18n.language === 'ar' ? 'ar-EG' : 'en-US')}</span>
-                    </div>
-                    <button onClick={() => setViewModal({show: false, request: null})} className="text-slate-400 hover:text-red-500">
-                        <X size={24} />
-                    </button>
-                </div>
 
-                <div className="p-6 space-y-8">
-                    {/* Status & Service Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                            <div>
-                                <h3 className="text-sm font-medium text-slate-500 mb-1">{t('requests.client_info')}</h3>
-                                <div className="font-semibold text-slate-900 flex items-center gap-2">
-                                    <User size={16} className="text-blue-500" />
-                                    {viewModal.request.user?.name}
-                                </div>
-                                <div className="text-sm text-slate-600 mt-1" dir="ltr">{viewModal.request.user?.phone}</div>
-                            </div>
 
-                            <div>
-                                <h3 className="text-sm font-medium text-slate-500 mb-1">{t('user_details.service_type')}</h3>
-                                <div className="font-semibold text-slate-900">{t(`requests.types.${viewModal.request.service_type}`) || viewModal.request.service_type}</div>
-                            </div>
-
-                            <div>
-                                <h3 className="text-sm font-medium text-slate-500 mb-1">{t('requests.invoice_number')}</h3>
-                                <div className="font-mono text-slate-900">{viewModal.request.invoice_number || '-'}</div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <h3 className="text-sm font-medium text-slate-500 mb-1">{t('common.status')}</h3>
-                                <StatusBadge status={viewModal.request.status} />
-                            </div>
-
-                            <div>
-                                <h3 className="text-sm font-medium text-slate-500 mb-1">{t('requests.scheduled_at')}</h3>
-                                <div className="flex items-center gap-2 text-slate-900 font-semibold">
-                                    <Calendar size={16} className="text-indigo-500" />
-                                    <span dir="ltr">
-                                        {new Date(viewModal.request.scheduled_at).toLocaleDateString()} -
-                                        {new Date(viewModal.request.scheduled_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Location & Description */}
-                    <div className="bg-slate-50 p-4 rounded-xl space-y-4">
-                        <div>
-                            <h3 className="text-sm font-medium text-slate-500 mb-1">{t('common.address')}</h3>
-                            <p className="text-slate-900">{viewModal.request.address}</p>
-                            {viewModal.request.latitude && (
-                                <a
-                                    href={`https://www.google.com/maps?q=${viewModal.request.latitude},${viewModal.request.longitude}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1"
-                                >
-                                    عرض الموقع على الخريطة ↗
-                                </a>
-                            )}
-                        </div>
-                        <div>
-                            <h3 className="text-sm font-medium text-slate-500 mb-1">{t('common.description')}</h3>
-                            <p className="text-slate-700 leading-relaxed">{viewModal.request.description}</p>
-                        </div>
-                    </div>
-
-                    {/* Images Gallery */}
-                    <div>
-                        <h3 className="text-sm font-medium text-slate-500 mb-3">{t('requests.attachments')}</h3>
-                        {viewModal.request.attachments && viewModal.request.attachments.length > 0 ? (
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {viewModal.request.attachments.map((img: any) => (
-                                    <div key={img.id} className="relative aspect-square rounded-lg overflow-hidden border border-slate-200 group">
-                                        <img
-                                            src={`${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}/storage/${img.file_path}`}
-                                            alt="Request Attachment"
-                                            className="w-full h-full object-cover transition-transform group-hover:scale-110"
-                                        />
-                                        <a
-                                            href={`${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}/storage/${img.file_path}`}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm font-medium"
-                                        >
-                                            عرض الصورة
-                                        </a>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-center py-8 bg-slate-50 rounded-lg text-slate-400 text-sm border border-dashed border-slate-200">
-                                {t('requests.no_attachments')}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Technician Info */}
-                    {viewModal.request.technician && (
-                        <div className="border-t border-slate-100 pt-6">
-                            <h3 className="text-sm font-medium text-slate-500 mb-2">{t('requests.technician')}</h3>
-                            <div className="flex items-center gap-3 bg-blue-50 p-3 rounded-lg border border-blue-100">
-                                <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold">
-                                    {viewModal.request.technician.name.charAt(0)}
-                                </div>
-                                <div>
-                                    <div className="font-bold text-slate-900">{viewModal.request.technician.name}</div>
-                                    <div className="text-xs text-slate-500" dir="ltr">{viewModal.request.technician.phone}</div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-      )}
 
       {/* Assign Modal */}
       {assignModal.show && (

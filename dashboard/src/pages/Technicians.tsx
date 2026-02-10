@@ -6,6 +6,7 @@ import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import clsx from 'clsx';
 import api from '../services/auth';
 import { useTranslation } from 'react-i18next';
+import LiveTrackingMap from '../components/LiveTrackingMap';
 
 export default function Technicians() {
   const { t } = useTranslation();
@@ -13,10 +14,13 @@ export default function Technicians() {
   const [technicians, setTechnicians] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [mapMode, setMapMode] = useState<{show: boolean, techId: number | null}>({show: false, techId: null});
   const [showPassword, setShowPassword] = useState(false);
   const [newTech, setNewTech] = useState({ name: '', phone: '', password: '' });
   const [submitting, setSubmitting] = useState(false);
   const [deleteModal, setDeleteModal] = useState<{show: boolean, techId: number | null, loading: boolean}>({show: false, techId: null, loading: false});
+  const [selectedTechs, setSelectedTechs] = useState<number[]>([]);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
 
 
@@ -95,6 +99,62 @@ export default function Technicians() {
         </button>
       </div>
 
+      {/* Bulk Actions Toolbar */}
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="flex items-center gap-3">
+            <input
+                type="checkbox"
+                checked={selectedTechs.length === technicians.length && technicians.length > 0}
+                onChange={() => {
+                    if (selectedTechs.length === technicians.length) {
+                        setSelectedTechs([]);
+                    } else {
+                        setSelectedTechs(technicians.map((t: any) => t.id));
+                    }
+                }}
+                className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-slate-700 font-medium">
+                {selectedTechs.length > 0 ? `${selectedTechs.length} ${t('common.selected')}` : t('tracking.select_all')}
+            </span>
+        </div>
+
+        {selectedTechs.length > 0 && (
+            <div className="flex items-center gap-3">
+                <button
+                    onClick={() => setSelectedTechs([])}
+                    className="text-slate-500 hover:text-slate-700 text-sm font-medium flex items-center gap-1"
+                >
+                    <X size={16} />
+                    {t('common.cancel')}
+                </button>
+                <button
+                    onClick={async () => {
+                        if (!confirm(t(`Delete ${selectedTechs.length} selected technician(s)?`))) return;
+                        try {
+                            setBulkDeleting(true);
+                            const res = await api.post('/admin/users/bulk-delete', { ids: selectedTechs });
+                            if (res.data.success) {
+                                loadTechnicians();
+                                setSelectedTechs([]);
+                                alert(res.data.message);
+                            }
+                        } catch (error: any) {
+                            alert(error.response?.data?.message || 'Error deleting technicians');
+                        } finally {
+                            setBulkDeleting(false);
+                        }
+                    }}
+                    disabled={bulkDeleting}
+                    className="bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-700 transition-colors disabled:opacity-50"
+                >
+                    <Trash2 size={16} />
+                    {bulkDeleting ? t('common.deleting') + '...' : t('tracking.delete_selected')}
+                </button>
+            </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (
             [1,2,3].map(i => (
@@ -104,7 +164,26 @@ export default function Technicians() {
             <div className="col-span-full text-center py-12 text-slate-500">{t('technicians.no_techs')}</div>
         ) : (
             technicians.map(tech => (
-                <div key={tech.id} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <div key={tech.id} className={clsx(
+                    "bg-white p-6 rounded-xl border shadow-sm hover:shadow-md transition-shadow relative",
+                    selectedTechs.includes(tech.id) ? "border-blue-500 ring-1 ring-blue-500" : "border-slate-200"
+                )}>
+                    {/* Checkbox Overlay */}
+                    <div className="absolute top-4 right-4 z-10">
+                        <input
+                            type="checkbox"
+                            checked={selectedTechs.includes(tech.id)}
+                            onChange={() => {
+                                setSelectedTechs(prev =>
+                                    prev.includes(tech.id)
+                                        ? prev.filter(id => id !== tech.id)
+                                        : [...prev, tech.id]
+                                );
+                            }}
+                            className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 bg-white"
+                        />
+                    </div>
+
                     <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-lg">
@@ -156,7 +235,10 @@ export default function Technicians() {
                             <FileText size={16} />
                             {t('technicians.history')}
                         </button>
-                        <button className="flex-1 bg-slate-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-slate-800">
+                        <button
+                            onClick={() => setMapMode({ show: true, techId: tech.id })}
+                            className="flex-1 bg-slate-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-slate-800"
+                        >
                             {t('technicians.live_tracking')}
                         </button>
                     </div>
@@ -229,6 +311,34 @@ export default function Technicians() {
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+      )}
+
+      {/* Live Tracking Modal */}
+      {mapMode.show && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl w-full max-w-4xl p-0 shadow-2xl relative animate-in fade-in zoom-in duration-200 overflow-hidden">
+                <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                     <div className="flex items-center gap-2">
+                        <div className="p-2 bg-green-100 text-green-600 rounded-lg">
+                            <MapPin size={20} />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-900">{mapMode.techId ? t('tracking.technician_location') : t('tracking.live_technician_tracking')}</h2>
+                            <p className="text-xs text-slate-500">{t('tracking.realtime_from_firebase')}</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setMapMode({ show: false, techId: null })}
+                        className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500"
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="p-4 bg-slate-100">
+                    <LiveTrackingMap technicians={technicians} focusTechId={mapMode.techId} />
+                </div>
             </div>
         </div>
       )}

@@ -1,10 +1,10 @@
 import axios from 'axios';
 
-// const API_URL = 'https://back.sindbad.om/public/api';
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+// const BASE_API_URL = import.meta.env.VITE_API_BASE_URL || 'https://back.sindbad.om/public/api';
+const BASE_API_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
 const api = axios.create({
-    baseURL: API_URL,
+    baseURL: BASE_API_URL,
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
@@ -59,5 +59,9 @@ export const adminService = {
         return response.data;
     }
 };
+
+// Export API_URL for components that need to construct storage URLs
+export const API_URL = import.meta.env.VITE_API_BASE_URL || 'https://back.sindbad.om/public/api';
+export const getBaseUrl = () => API_URL.replace('/api', '');
 
 export default api;

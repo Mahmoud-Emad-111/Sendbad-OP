@@ -30,7 +30,7 @@ class StoreInstallationRequest extends FormRequest
             'notes' => 'nullable|string',
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'address' => 'required|string',
+            'address' => 'nullable|string',
             'scheduled_at' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:scheduled_at',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120'

@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../services/auth';
+import api, { getBaseUrl } from '../services/auth';
 import { Calendar, User, Settings, AlertCircle, CheckCircle, Clock, MapPin, ArrowRight } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import clsx from 'clsx';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useTranslation } from 'react-i18next';
-
-const API_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace('/api', '');
 
 const containerStyle = {
     width: '100%',
@@ -238,12 +236,12 @@ export default function ServiceRequestDetails() {
                                 {request.attachments.map((img: any) => (
                                     <div key={img.id} className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 group cursor-pointer">
                                         <img
-                                            src={`${API_URL}/storage/${img.file_path}`}
+                                            src={`${getBaseUrl()}/storage/${img.file_path}`}
                                             alt="Request Attachment"
                                             className="w-full h-full object-cover transition-transform group-hover:scale-105"
                                         />
                                         <a
-                                            href={`${API_URL}/storage/${img.file_path}`}
+                                            href={`${getBaseUrl()}/storage/${img.file_path}`}
                                             target="_blank"
                                             rel="noreferrer"
                                             className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-medium"
@@ -263,7 +261,7 @@ export default function ServiceRequestDetails() {
 
                     {/* Customer Rating Section - Enhanced Design */}
                     {request.rating && request.status === 'completed' && (
-                        <div className="bg-gradient-to-br from-amber-50 via-orange-50/30 to-yellow-50/50 p-8 rounded-2xl border-2 border-amber-200/60 shadow-lg relative overflow-hidden">
+                        <div className="bg-linear-to-br from-amber-50 via-orange-50/30 to-yellow-50/50 p-8 rounded-2xl border-2 border-amber-200/60 shadow-lg relative overflow-hidden">
                             {/* Decorative Background Elements */}
                             <div className="absolute top-0 right-0 w-32 h-32 bg-amber-200/20 rounded-full -mr-16 -mt-16"></div>
                             <div className="absolute bottom-0 left-0 w-24 h-24 bg-orange-200/20 rounded-full -ml-12 -mb-12"></div>
@@ -271,7 +269,7 @@ export default function ServiceRequestDetails() {
                             {/* Header */}
                             <div className="relative z-10 mb-6">
                                 <div className="flex items-center gap-3 mb-2">
-                                    <div className="p-2.5 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl shadow-md">
+                                    <div className="p-2.5 bg-linear-to-br from-amber-400 to-orange-500 rounded-xl shadow-md">
                                         <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
                                             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                                         </svg>
@@ -287,7 +285,7 @@ export default function ServiceRequestDetails() {
                                 {/* Overall Rating Summary */}
                                 <div className="flex items-center gap-4 mt-4 p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-amber-100">
                                     <div className="text-center">
-                                        <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600">
+                                        <div className="text-4xl font-black text-transparent bg-clip-text bg-linear-to-r from-amber-500 to-orange-600">
                                             {((request.rating.product_rating + request.rating.service_rating) / 2).toFixed(1)}
                                         </div>
                                         <div className="text-xs text-slate-500 font-medium mt-1">متوسط التقييم</div>
@@ -349,7 +347,7 @@ export default function ServiceRequestDetails() {
                                     </div>
                                     <div className="w-full bg-gray-200 rounded-full h-2">
                                         <div
-                                            className="bg-gradient-to-r from-amber-400 to-amber-500 h-2 rounded-full transition-all duration-500"
+                                            className="bg-linear-to-r from-amber-400 to-amber-500 h-2 rounded-full transition-all duration-500"
                                             style={{ width: `${(request.rating.product_rating / 5) * 100}%` }}
                                         ></div>
                                     </div>
@@ -391,7 +389,7 @@ export default function ServiceRequestDetails() {
                                     </div>
                                     <div className="w-full bg-gray-200 rounded-full h-2">
                                         <div
-                                            className="bg-gradient-to-r from-green-400 to-green-500 h-2 rounded-full transition-all duration-500"
+                                            className="bg-linear-to-r from-green-400 to-green-500 h-2 rounded-full transition-all duration-500"
                                             style={{ width: `${(request.rating.service_rating / 5) * 100}%` }}
                                         ></div>
                                     </div>
@@ -429,7 +427,7 @@ export default function ServiceRequestDetails() {
                                             </span>
                                         </div>
                                         <div className="relative">
-                                            <div className="text-slate-700 leading-relaxed bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-lg border-l-4 border-purple-400">
+                                            <div className="text-slate-700 leading-relaxed bg-linear-to-br from-purple-50 to-pink-50 p-4 rounded-lg border-l-4 border-purple-400">
                                                 <svg className="w-6 h-6 text-purple-200 absolute top-2 left-2" fill="currentColor" viewBox="0 0 24 24">
                                                     <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/>
                                                 </svg>

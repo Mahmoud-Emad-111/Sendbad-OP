@@ -20,7 +20,8 @@ class InstallationRequest extends Model
         'address',
         'scheduled_at',
         'end_date',
-        'status'
+        'status',
+        'completed_at'
     ];
 
     protected $casts = [
@@ -28,6 +29,7 @@ class InstallationRequest extends Model
         'readiness_details' => 'array',
         'scheduled_at' => 'date',
         'end_date' => 'date',
+        'completed_at' => 'datetime',
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
     ];

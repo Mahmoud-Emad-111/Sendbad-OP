@@ -72,8 +72,8 @@ const Sidebar = () => {
                     </div>
                     {!collapsed && (
                         <div className="flex flex-col">
-                            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Sindbad</h1>
-                            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Dashboard</span>
+                            <h1 className="text-xl font-bold text-slate-900 tracking-tight">{t('branding.app_name')}</h1>
+                            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">{t('branding.tagline')}</span>
                         </div>
                     )}
                 </div>

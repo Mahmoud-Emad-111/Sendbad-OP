@@ -1,0 +1,42 @@
+{
+  "53": {
+    "lat": 23.5859,
+    "lng": 58.4059,
+    "timestamp": 1739209500000,
+    "heading": 90,
+    "speed": 45,
+    "is_online": true
+  },
+  "51": {
+    "lat": 23.6100,
+    "lng": 58.5400,
+    "timestamp": 1739209505000,
+    "heading": 180,
+    "speed": 30,
+    "is_online": true
+  },
+  "63": {
+    "lat": 23.6139,
+    "lng": 58.5922,
+    "timestamp": 1739209510000,
+    "heading": 270,
+    "speed": 0,
+    "is_online": true
+  },
+  "20": {
+    "lat": 23.5670,
+    "lng": 58.1670,
+    "timestamp": 1739209515000,
+    "heading": 45,
+    "speed": 60,
+    "is_online": true
+  },
+  "25": {
+    "lat": 23.6000,
+    "lng": 58.3000,
+    "timestamp": 1739209520000,
+    "heading": 135,
+    "speed": 10,
+    "is_online": true
+  }
+}

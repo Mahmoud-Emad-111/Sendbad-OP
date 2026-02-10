@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'financial.eligibility' => \App\Http\Middleware\EnsureFinancialEligibility::class,
             'task.readiness' => \App\Http\Middleware\EnsureTaskReadiness::class,
+            'check.pending' => \App\Http\Middleware\CheckPendingRequests::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
