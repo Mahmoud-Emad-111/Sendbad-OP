@@ -52,14 +52,14 @@ export default function Settings() {
 
             const res = await api.post('/auth/update-profile', payload);
             if (res.data.success) {
-                alert('تم تحديث البيانات بنجاح');
+                alert(t('settings_page.update_success'));
                 setUser(res.data.data);
                 setPassword('');
                 setPasswordConfirmation('');
             }
         } catch (error: any) {
             console.error(error);
-            alert(error.response?.data?.message || 'حدث خطأ أثناء التحديث');
+            alert(error.response?.data?.message || t('settings_page.update_error'));
         } finally {
             setSaving(false);
         }

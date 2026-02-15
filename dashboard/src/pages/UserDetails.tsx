@@ -6,7 +6,7 @@ import { adminService } from '../services/auth';
 import {
     Phone, Calendar, Receipt, ArrowLeft,
     FileText, CheckCircle, AlertCircle, ShoppingBag,
-    Building
+    Building, Edit2, Save, X, ExternalLink, Link as LinkIcon
 } from 'lucide-react';
 import clsx from 'clsx';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -17,6 +17,8 @@ export default function UserDetails() {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'requests' | 'invoices'>('requests');
+    const [isEditingLink, setIsEditingLink] = useState(false);
+    const [profileLink, setProfileLink] = useState('');
 
     useEffect(() => {
         loadData();
@@ -32,6 +34,19 @@ export default function UserDetails() {
             console.error(error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleUpdateLink = async () => {
+        if (!user) return;
+        try {
+            const res = await adminService.updateUser(user.id, { profile_link: profileLink });
+            if (res.success) {
+                setData({ ...data, user: { ...user, profile_link: profileLink } });
+                setIsEditingLink(false);
+            }
+        } catch (error) {
+            console.error("Failed to update link", error);
         }
     };
 
@@ -98,6 +113,70 @@ export default function UserDetails() {
                             </div>
                         </div>
 
+
+
+                        {/* Profile Link Section */}
+                        <div className="flex items-center gap-3">
+                            {isEditingLink ? (
+                                <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
+                                    <div className="relative">
+                                        <LinkIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 rtl:right-3 rtl:left-auto" />
+                                        <input
+                                            type="url"
+                                            value={profileLink}
+                                            onChange={(e) => setProfileLink(e.target.value)}
+                                            placeholder="https://example.com/profile"
+                                            className="pl-9 pr-4 rtl:pr-9 rtl:pl-4 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64 outline-none transition-shadow"
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={handleUpdateLink}
+                                        className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                                    >
+                                        <Save size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => setIsEditingLink(false)}
+                                        className="p-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-3 group">
+                                    {user.profile_link ? (
+                                        <a
+                                            href={user.profile_link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 text-blue-600 bg-blue-50/50 px-3 py-1.5 rounded-lg border border-blue-100/50 hover:bg-blue-50 hover:border-blue-200 transition-all"
+                                        >
+                                            <ExternalLink size={14} />
+                                            <span className="text-sm font-medium underline decoration-blue-300 underline-offset-2 break-all max-w-[200px] truncate" dir="ltr">
+                                                {user.profile_link}
+                                            </span>
+                                        </a>
+                                    ) : (
+                                        <span className="text-sm text-slate-400 italic flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-transparent">
+                                            <LinkIcon size={14} />
+                                            <span>{t('user_details.no_profile_link') || 'No link'}</span>
+                                        </span>
+                                    )}
+
+                                    <button
+                                        onClick={() => {
+                                            setProfileLink(user.profile_link || '');
+                                            setIsEditingLink(true);
+                                        }}
+                                        className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all focus:opacity-100"
+                                    >
+                                        <Edit2 size={14} />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
                         {/* Quick Stats */}
                         <div className="flex gap-4">
                             <div className="px-6 py-3 bg-slate-50 rounded-xl border border-slate-100 text-center min-w-[120px]">
@@ -106,7 +185,7 @@ export default function UserDetails() {
                             </div>
                             <div className="px-6 py-3 bg-blue-50 rounded-xl border border-blue-100 text-center min-w-[120px]">
                                 <div className="text-xs text-blue-600 font-medium mb-1">{t('user_details.total_purchases')}</div>
-                                <div className="text-xl font-bold text-blue-700" dir="ltr">{totalSpent.toFixed(3)} OMR</div>
+                                <div className="text-xl font-bold text-blue-700" dir="ltr">{totalSpent.toFixed(3)} {t('common.currency')}</div>
                             </div>
                         </div>
                     </div>
@@ -197,7 +276,7 @@ export default function UserDetails() {
                                                 </div>
                                                 <div className="text-sm text-slate-500 font-medium mb-1">{t('user_details.total_purchases')}</div>
                                                 <div className="text-3xl font-bold text-slate-900 tracking-tight" dir="ltr">
-                                                    <span className="text-lg text-slate-400 font-normal mr-1">OMR</span>
+                                                    <span className="text-lg text-slate-400 font-normal mr-1">{t('common.currency')}</span>
                                                     {odoo.orders.reduce((sum: number, o: any) => sum + (o.amount_total || 0), 0).toFixed(3)}
                                                 </div>
                                             </div>
@@ -211,7 +290,7 @@ export default function UserDetails() {
                                                 </div>
                                                 <div className="text-sm text-slate-500 font-medium mb-1">{t('user_details.paid_amount')}</div>
                                                 <div className="text-3xl font-bold text-emerald-700 tracking-tight" dir="ltr">
-                                                    <span className="text-lg text-slate-400 font-normal mr-1">OMR</span>
+                                                    <span className="text-lg text-slate-400 font-normal mr-1">{t('common.currency')}</span>
                                                     {(odoo.orders.reduce((sum: number, o: any) => sum + (o.amount_total || 0), 0) - odoo.orders.reduce((sum: number, o: any) => sum + (o.amount_due || o.amount_residual || 0), 0)).toFixed(3)}
                                                 </div>
                                             </div>
@@ -225,7 +304,7 @@ export default function UserDetails() {
                                                 </div>
                                                 <div className="text-sm text-slate-500 font-medium mb-1">{t('user_details.due_amount')}</div>
                                                 <div className="text-3xl font-bold text-red-700 tracking-tight" dir="ltr">
-                                                     <span className="text-lg text-slate-400 font-normal mr-1">OMR</span>
+                                                     <span className="text-lg text-slate-400 font-normal mr-1">{t('common.currency')}</span>
                                                     {odoo.orders.reduce((sum: number, o: any) => sum + (o.amount_due || o.amount_residual || 0), 0).toFixed(3)}
                                                 </div>
                                             </div>
@@ -326,7 +405,7 @@ export default function UserDetails() {
                                                 <ShoppingBag size={24} className="text-slate-300" />
                                             </div>
                                             <h3 className="text-slate-900 font-medium mb-1">{t('user_details.no_financial_records')}</h3>
-                                            <p className="text-sm max-w-xs mx-auto">...</p>
+                                            <p className="text-sm max-w-xs mx-auto">{t('user_details.no_financial_records_help')}</p>
                                         </div>
                                     )}
                                 </>
@@ -337,7 +416,7 @@ export default function UserDetails() {
                                     </div>
                                     <h3 className="text-xl font-bold text-slate-800 mb-2">{t('user_details.user_not_linked_odoo')}</h3>
                                     <p className="max-w-md mx-auto text-slate-600 mb-6 leading-relaxed">
-                                        ... <br />
+                                        {t('user_details.odoo_link_help')} <br />
                                         <span className="font-mono bg-white px-2 rounded border mx-1" dir="ltr">{user.phone}</span>
                                         <span className="font-bold text-slate-800">"{user.name}"</span>.
                                     </p>

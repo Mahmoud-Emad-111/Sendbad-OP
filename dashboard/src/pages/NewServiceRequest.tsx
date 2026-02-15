@@ -59,7 +59,7 @@ export default function NewServiceRequest() {
 
   const handlePhoneLookup = async () => {
     if (!phone || phone.length < 8) {
-        toast.error(t('new_service_request.invalid_phone') || 'Invalid phone number');
+        toast.error(t('new_service_request.invalid_phone'));
         return;
     }
 
@@ -83,9 +83,9 @@ export default function NewServiceRequest() {
         }
     } catch (error: any) {
         if (error.response?.status === 404) {
-            toast.error(t('new_service_request.user_not_found') || 'User not found');
+            toast.error(t('new_service_request.user_not_found'));
         } else {
-            toast.error(t('common.error') || 'Error occurred');
+            toast.error(t('common.error'));
         }
     } finally {
         setLookingUp(false);
@@ -116,7 +116,7 @@ export default function NewServiceRequest() {
     e.preventDefault();
 
     if (!userData) {
-        toast.error(t('new_service_request.lookup_first') || 'Please lookup user first');
+        toast.error(t('new_service_request.lookup_first'));
         return;
     }
 
@@ -126,7 +126,7 @@ export default function NewServiceRequest() {
     }
 
     if (!formData.description || !formData.scheduled_at) {
-        toast.error(t('new_service_request.fill_required') || 'Please fill all required fields');
+        toast.error(t('new_service_request.fill_required'));
         return;
     }
 
@@ -158,7 +158,7 @@ export default function NewServiceRequest() {
         });
 
         if (response.data.success) {
-            toast.success(t('new_service_request.success') || 'Request created successfully!');
+            toast.success(t('new_service_request.success'));
             navigate('/dashboard/requests');
         }
     } catch (error: any) {
@@ -233,7 +233,7 @@ export default function NewServiceRequest() {
                         {userData.user.is_odoo_only && (
                              <p className="text-amber-600 flex items-center gap-1 font-medium bg-amber-50 p-2 rounded-lg border border-amber-100">
                                 <Info size={16} />
-                                {t('new_service_request.is_new_user') || 'User will be registered automatically'}
+                                {t('new_service_request.is_new_user')}
                              </p>
                         )}
                         {userData.odoo.linked && (

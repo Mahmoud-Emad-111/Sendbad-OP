@@ -67,7 +67,7 @@ export default function NewAdminInstallationRequest() {
 
   const handlePhoneLookup = async () => {
     if (!phone || phone.length < 8) {
-        toast.error(t('new_service_request.invalid_phone') || 'Invalid phone number');
+        toast.error(t('new_service_request.invalid_phone'));
         return;
     }
 
@@ -90,9 +90,9 @@ export default function NewAdminInstallationRequest() {
         }
     } catch (error: any) {
         if (error.response?.status === 404) {
-            toast.error(t('new_service_request.user_not_found') || 'User not found');
+            toast.error(t('new_service_request.user_not_found'));
         } else {
-            toast.error(t('common.error') || 'Error occurred');
+            toast.error(t('common.error'));
         }
     } finally {
         setLookingUp(false);
@@ -129,7 +129,7 @@ export default function NewAdminInstallationRequest() {
     e.preventDefault();
 
     if (!userData) {
-        toast.error(t('new_service_request.lookup_first') || 'Please lookup user first');
+        toast.error(t('new_service_request.lookup_first'));
         return;
     }
 
@@ -176,7 +176,7 @@ export default function NewAdminInstallationRequest() {
         });
 
         if (response.data.success) {
-            toast.success(t('new_service_request.success') || 'Request created successfully!');
+            toast.success(t('new_service_request.success'));
             navigate('/dashboard/requests/installation');
         }
     } catch (error: any) {

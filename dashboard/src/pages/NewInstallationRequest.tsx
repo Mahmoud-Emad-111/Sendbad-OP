@@ -106,7 +106,7 @@ export default function NewInstallationRequest() {
 
     // Append array items individually for FormData
     selectedReadiness.forEach((item, index) => {
-        data.append(`readiness_details[${index}]`, t(`new_request.readiness_options.${item}`));
+        data.append(`readiness_details[${index}]`, item);
     });
 
     images.forEach((image, index) => {
@@ -124,7 +124,7 @@ export default function NewInstallationRequest() {
         }
     } catch (error: any) {
         console.error(error);
-        toast.error(error.response?.data?.message || t('login.server_error'));
+        toast.error(error.response?.data?.message || t('common.error'));
     } finally {
         setLoading(false);
     }

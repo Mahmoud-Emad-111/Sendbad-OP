@@ -9,6 +9,12 @@ use App\Services\Odoo\OdooService;
 
 class AdminController extends Controller
 {
+    protected $notificationService;
+
+    public function __construct(\App\Services\NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
     /**
      * List all users (with optional role filtering)
      */
@@ -18,6 +24,15 @@ class AdminController extends Controller
 
         if ($request->has('role')) {
             $query->where('role', $request->role);
+        }
+
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
         }
 
         $users = $query->latest()->get();
@@ -419,37 +434,81 @@ class AdminController extends Controller
 
     public function getPerformanceReports()
     {
-        // 1. Top Technicians by Rating
-        $topTechnicians = User::where('role', 'technician')
-            ->whereHas('assignedServiceRequests', function($q) {
-                $q->whereNotNull('rating');
+        // 1. Top Technicians by Rating (Service + Installation)
+        $technicians = User::where('role', 'technician')
+            ->with(['assignedServiceRequests.rating', 'assignedInstallationRequests.rating'])
+            ->get()
+            ->map(function ($tech) {
+                // Collect all service ratings
+                $serviceRatings = $tech->assignedServiceRequests->pluck('rating.service_rating')->filter();
+                $installRatings = $tech->assignedInstallationRequests->pluck('rating.service_rating')->filter();
+                $allRatings = $serviceRatings->merge($installRatings);
+
+                $avg = $allRatings->avg() ?? 0;
+                $count = $tech->assignedServiceRequests->where('status', 'completed')->count()
+                       + $tech->assignedInstallationRequests->where('status', 'completed')->count();
+
+                return [
+                    'id' => $tech->id,
+                    'name' => $tech->name,
+                    'avg_rating' => round($avg, 1),
+                    'completed_count' => $count
+                ];
             })
-            ->withAvg('assignedServiceRequests as avg_rating', 'rating')
-            ->withCount(['assignedServiceRequests as completed_count' => function($q) {
-                $q->where('status', 'completed');
-            }])
-            ->orderByDesc('avg_rating')
+            ->sortByDesc('avg_rating')
+            ->values() // Re-index
+            ->take(5);
+
+        // 2. Average Completion Time (in hours) - Service
+        $serviceStats = \App\Models\ServiceRequest::whereNotNull('completed_at')
+            ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, completed_at)) as avg_hours, COUNT(*) as count')
+            ->first();
+
+        // 2. Average Completion Time (in hours) - Installation
+        $installStats = \App\Models\InstallationRequest::whereNotNull('completed_at')
+            ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, completed_at)) as avg_hours, COUNT(*) as count')
+            ->first();
+
+        // Weighted Average
+        $totalCount = ($serviceStats->count ?? 0) + ($installStats->count ?? 0);
+        $weightedAvg = 0;
+        if ($totalCount > 0) {
+            $weightedAvg = (
+                (($serviceStats->avg_hours ?? 0) * ($serviceStats->count ?? 0)) +
+                (($installStats->avg_hours ?? 0) * ($installStats->count ?? 0))
+            ) / $totalCount;
+        }
+
+        // 3. Ratings Breakdown (All Service Ratings)
+        $ratingsBreakdown = \App\Models\Rating::selectRaw('service_rating as rating, count(*) as count')
+            ->whereNotNull('service_rating')
+            ->groupBy('service_rating')
+            ->orderByDesc('service_rating')
+            ->get();
+
+        // 4. Top Customers (By Spending - Manual Orders)
+        $topCustomers = \App\Models\User::where('role', 'customer')
+            ->join('manual_orders', 'users.id', '=', 'manual_orders.user_id')
+            ->selectRaw('users.id, users.name, users.phone, count(manual_orders.id) as orders_count, sum(manual_orders.total_amount) as total_spent, sum(manual_orders.paid_amount) as total_paid')
+            ->groupBy('users.id', 'users.name', 'users.phone')
+            ->orderByDesc('total_spent')
             ->take(5)
             ->get();
 
-        // 2. Average Completion Time (in hours)
-        $completionStats = \App\Models\ServiceRequest::whereNotNull('completed_at')
-            ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, completed_at)) as avg_hours_to_complete')
-            ->first();
-
-        // 3. Ratings Breakdown
-        $ratingsBreakdown = \App\Models\ServiceRequest::whereNotNull('rating')
-            ->selectRaw('rating, count(*) as count')
-            ->groupBy('rating')
-            ->orderByDesc('rating')
+        // 5. Recent Financial Transactions (Last 10 Manual Orders)
+        $recentTransactions = \App\Models\ManualOrder::with('user:id,name')
+            ->latest()
+            ->take(10)
             ->get();
 
         return response()->json([
             'success' => true,
             'data' => [
-                'top_technicians' => $topTechnicians,
-                'avg_completion_hours' => round($completionStats->avg_hours_to_complete ?? 0, 1),
-                'ratings_breakdown' => $ratingsBreakdown
+                'top_technicians' => $technicians,
+                'avg_completion_hours' => round($weightedAvg, 1),
+                'ratings_breakdown' => $ratingsBreakdown,
+                'top_customers' => $topCustomers,
+                'recent_transactions' => $recentTransactions
             ]
         ]);
     }
@@ -535,6 +594,34 @@ class AdminController extends Controller
     }
 
     /**
+     * Update User Details (Admin Only)
+     */
+    public function updateUser(Request $request, $id)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $user = User::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'phone' => 'sometimes|string|unique:users,phone,' . $user->id,
+            'role' => 'sometimes|in:admin,technician,customer',
+            'is_active' => 'sometimes|boolean',
+            'profile_link' => 'nullable|url'
+        ]);
+
+        $user->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User updated successfully',
+            'data' => $user
+        ]);
+    }
+
+    /**
      * Bulk delete users
      */
     public function bulkDeleteUsers(Request $request)
@@ -606,7 +693,8 @@ class AdminController extends Controller
                     'rating' => $req->rating,
                     'invoice_number' => $req->invoice_number
                 ];
-            });
+
+});
 
         // Installation Requests
         $installation = \App\Models\InstallationRequest::with(['user', 'technician'])
@@ -631,6 +719,78 @@ class AdminController extends Controller
         return response()->json([
             'success' => true,
             'data' => $all
+        ]);
+    }
+
+
+    /**
+     * Send Custom Notification
+     */
+    public function sendCustomNotification(Request $request)
+    {
+        $request->validate([
+            'recipient_type' => 'required|in:all_users,all_technicians,specific_user',
+            'user_id' => 'required_if:recipient_type,specific_user|exists:users,id',
+            'title' => 'required|string|max:255',
+            'body' => 'required|string',
+        ]);
+
+        $users = collect();
+
+        if ($request->recipient_type === 'all_users') {
+            $users = \App\Models\User::where('role', 'customer')->whereNotNull('fcm_token')->get();
+        } elseif ($request->recipient_type === 'all_technicians') {
+            $users = \App\Models\User::where('role', 'technician')->whereNotNull('fcm_token')->get();
+        } elseif ($request->recipient_type === 'specific_user') {
+            $user = \App\Models\User::find($request->user_id);
+            if ($user && $user->fcm_token) {
+                $users->push($user);
+            }
+        }
+
+        $count = 0;
+        foreach ($users as $user) {
+            $this->notificationService->sendNotification(
+                $user->fcm_token,
+                $request->title,
+                $request->body,
+                ['type' => 'custom_notification']
+            );
+            $count++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Notification sent to {$count} users successfully",
+            'sent_count' => $count
+        ]);
+    }
+
+    /**
+     * Get All Ratings for Reports
+     */
+    public function getRatings(Request $request)
+    {
+        $ratings = \App\Models\Rating::with(['user', 'request'])
+            ->latest()
+            ->take(20) // Limit to latest 20 for the report dashboard
+            ->get()
+            ->map(function ($rating) {
+                return [
+                    'id' => $rating->id,
+                    'user_name' => $rating->user->name ?? 'Unknown',
+                    'rating' => ($rating->product_rating + $rating->service_rating) / 2,
+                    'comment' => $rating->customer_notes,
+                    'image_url' => $rating->image_url,
+                    'created_at' => $rating->created_at->diffForHumans(),
+                    'request_id' => $rating->request_id,
+                    'request_type' => $rating->request_type,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $ratings
         ]);
     }
 }

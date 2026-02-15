@@ -26,6 +26,7 @@ class RatingRequest extends FormRequest
             'service_rating' => 'required|integer|min:1|max:5',
             'how_found_us' => 'required|string|max:255',
             'customer_notes' => 'required|string|max:1000',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB
         ];
     }
 

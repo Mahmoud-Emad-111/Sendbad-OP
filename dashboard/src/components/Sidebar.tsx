@@ -11,7 +11,8 @@ import {
   ClipboardList,
   ChevronLeft,
   ChevronRight,
-  Globe
+  Globe,
+  Send
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
@@ -26,13 +27,14 @@ const Sidebar = () => {
 
     const menuItems = [
         { icon: LayoutDashboard, label: t('common.dashboard'), path: '/dashboard' },
-        { icon: MapIcon, label: t('common.live_map'), path: '/dashboard/map' },
+        // { icon: MapIcon, label: t('common.live_map'), path: '/dashboard/map' },
         { icon: Users, label: t('common.users'), path: '/dashboard/users' },
         { icon: LayoutDashboard, label: t('common.technicians'), path: '/dashboard/technicians' },
         { icon: Settings, label: t('common.service_requests'), path: '/dashboard/requests' },
         { icon: ClipboardList, label: t('common.installation_requests'), path: '/dashboard/requests/installation' },
-        { icon: Package, label: t('common.inventory'), path: '/dashboard/inventory' },
+        // { icon: Package, label: t('common.inventory'), path: '/dashboard/inventory' },
         { icon: TrendingUp, label: t('common.reports'), path: '/dashboard/reports' },
+        { icon: Send, label: t('common.notifications'), path: '/dashboard/notifications' },
         { icon: Settings, label: t('common.settings'), path: '/dashboard/settings' },
     ];
 

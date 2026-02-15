@@ -15,14 +15,19 @@ class ServiceRequestController extends Controller
      */
     protected $notificationService;
     protected $odooService;
+    protected $activityLogger;
 
     public function __construct(
         \App\Services\NotificationService $notificationService,
-        \App\Services\Odoo\OdooService $odooService
+        \App\Services\Odoo\OdooService $odooService,
+        \App\Services\ActivityLogger $activityLogger
     ) {
         $this->notificationService = $notificationService;
         $this->odooService = $odooService;
+        $this->activityLogger = $activityLogger;
     }
+
+
 
     /**
      * Get Customer Orders (For selecting product to maintain)
@@ -83,7 +88,15 @@ class ServiceRequestController extends Controller
             $serviceRequest->user,
             'Service Request Accepted',
             "Your service request #{$serviceRequest->id} has been accepted by the technician and they are on their way.",
-            ['type' => 'service_request_update', 'request_id' => $serviceRequest->id]
+            ['type' => 'service_request_update', 'request_id' => $serviceRequest->id, 'request_type' => 'service']
+        );
+
+        // Log Activity
+        $this->activityLogger->log(
+            $serviceRequest,
+            'technician_accepted',
+            'تم قبول الطلب من قبل الفني',
+            ['status' => 'on_way', 'technician_id' => $request->user()->id]
         );
 
         return response()->json([
@@ -218,7 +231,7 @@ class ServiceRequestController extends Controller
      */
     public function show(Request $request, $id)
     {
-        $serviceRequest = \App\Models\ServiceRequest::with(['user', 'technician', 'attachments', 'rating'])->findOrFail($id);
+        $serviceRequest = \App\Models\ServiceRequest::with(['user', 'technician', 'attachments', 'rating', 'activities.user'])->findOrFail($id);
 
         // Security check: Customer can only see their own, Tech can only see assigned, Admin sees all
         $user = $request->user();
@@ -228,6 +241,29 @@ class ServiceRequestController extends Controller
         if ($user->role === 'technician' && $serviceRequest->technician_id !== $user->id) {
              return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
+
+        // Load technician images
+        $technicianImages = \App\Models\RequestTechnicianImage::where([
+            'request_id' => $id,
+            'request_type' => 'service'
+        ])
+        ->with('technician')
+        ->orderBy('created_at', 'desc')
+        ->get()
+        ->map(function ($image) {
+            return [
+                'id' => $image->id,
+                'image_url' => $image->image_url,
+                'technician' => [
+                    'id' => $image->technician->id,
+                    'name' => $image->technician->name
+                ],
+                'notes' => $image->notes,
+                'uploaded_at' => $image->created_at->toISOString()
+            ];
+        });
+
+        $serviceRequest->technician_images = $technicianImages;
 
         return response()->json([
             'success' => true,
@@ -316,21 +352,29 @@ class ServiceRequestController extends Controller
                  if ($admin->fcm_token) {
                      $this->notificationService->sendNotification(
                          $admin->fcm_token,
-                         'طلب صيانة جديد 🆕',
+                         'طلب صيانة جديد 🔧',
                          "تم استلام طلب صيانة جديد #{$serviceRequest->id} من {$request->user()->name}",
-                         ['request_id' => (string) $serviceRequest->id, 'type' => 'new_request']
+                         ['request_id' => (string) $serviceRequest->id, 'type' => 'new_service_request', 'request_type' => 'service']
                      );
                  } else {
                      // Manual DB Entry for Admin without Token (so he sees it in dashboard)
                      \App\Models\Notification::create([
                         'recipient_id' => $admin->id,
-                        'title' => 'طلب صيانة جديد 🆕',
+                        'title' => 'طلب صيانة جديد 🔧',
                         'body' => "تم استلام طلب صيانة جديد #{$serviceRequest->id} من {$request->user()->name}",
-                        'type' => 'new_request',
-                        'data' => ['request_id' => (string) $serviceRequest->id, 'type' => 'new_request'],
+                        'type' => 'new_service_request',
+                        'data' => ['request_id' => (string) $serviceRequest->id, 'type' => 'new_service_request', 'request_type' => 'service'],
                      ]);
                  }
             }
+
+            // Log Activity
+            $this->activityLogger->log(
+                $serviceRequest,
+                'created',
+                'تم إنشاء طلب الصيانة',
+                ['status' => 'pending']
+            );
 
             DB::commit();
 
@@ -368,20 +412,44 @@ class ServiceRequestController extends Controller
             'task_end_time' => $request->task_end_time
         ]);
 
-        // Notify Technician
         $technician = User::find($request->technician_id);
+        $customer = $serviceRequest->user;
+
+        $visitDate = $request->task_start_time ? date('Y-m-d H:i', strtotime($request->task_start_time)) : 'غير محدد';
+        $endDate = $request->task_end_time ? date('Y-m-d', strtotime($request->task_end_time)) : 'غير محدد';
+
+        // 1. Notify Technician
         if ($technician && $technician->fcm_token) {
             $this->notificationService->sendNotification(
                 $technician->fcm_token,
-                'مهمة جديدة 🛠️',
-                "تم تعيين طلب صيانة جديد لك: #{$serviceRequest->id}\nالنوع: {$serviceRequest->service_type}\nتاريخ التسليم: " . ($request->task_end_time ?? 'غير محدد'),
-                ['request_id' => (string) $serviceRequest->id, 'type' => 'assignment']
+                'مهمة صيانة جديدة 🛠️',
+                "تم تعيين طلب صيانة جديد لك: #{$serviceRequest->id}\nالنوع: {$serviceRequest->service_type}\nتاريخ الزيارة: {$visitDate}\nتاريخ التسليم: {$endDate}",
+                ['request_id' => (string) $serviceRequest->id, 'type' => 'assignment', 'request_type' => 'service']
             );
         }
 
+        // 2. Notify Customer
+        if ($customer && $customer->fcm_token) {
+            $techName = $technician ? $technician->name : 'فني';
+            $this->notificationService->sendNotification(
+                $customer->fcm_token,
+                'تم تحديد موعد الصيانة 📅',
+                "تم تعيين الفني {$techName} لطلب الصيانة #{$serviceRequest->id}.\nموعد الزيارة: {$visitDate}\nتاريخ التسليم المتوقع: {$endDate}",
+                ['request_id' => (string) $serviceRequest->id, 'type' => 'status_update', 'request_type' => 'service']
+            );
+        }
+
+        // Log Activity
+        $this->activityLogger->log(
+            $serviceRequest,
+            'assigned',
+            "تم تعيين الفني: " . ($technician ? $technician->name : 'غير محدد'),
+            ['technician_id' => $request->technician_id, 'visit_date' => $visitDate]
+        );
+
         return response()->json([
             'success' => true,
-            'message' => 'تم إسناد الطلب للفني بنجاح',
+            'message' => 'تم إسناد الطلب للفني وإشعار الأطراف بنجاح',
             'data' => $serviceRequest
         ]);
     }
@@ -430,10 +498,32 @@ class ServiceRequestController extends Controller
                     $customer->fcm_token,
                     'تحديث حالة الطلب 🔔',
                     "تم تغيير حالة طلبك #{$serviceRequest->id} إلى: {$statusText}",
-                    ['request_id' => (string) $serviceRequest->id, 'type' => 'status_update']
+                    ['request_id' => (string) $serviceRequest->id, 'type' => 'status_update', 'request_type' => 'service']
                 );
             }
         }
+
+        // Log Activity
+        $statusLabels = [
+            'pending' => 'قيد الانتظار',
+            'assigned' => 'تم الإسناد',
+            'on_way' => 'الفني في الطريق',
+            'in_progress' => 'جاري التنفيذ',
+            'completed' => 'مكتمل',
+            'canceled' => 'ملغي'
+        ];
+        $oldStatus = $serviceRequest->getOriginal('status'); // This won't work because we already updated it.
+        // Actually we updated it at line ~451 via $serviceRequest->update($data).
+        // So $serviceRequest->status is NEW status.
+        // We accept that we don't have old status here unless we fetched it before.
+        // But the message is enough.
+
+        $this->activityLogger->log(
+            $serviceRequest,
+            'status_updated',
+            "تم تحديث الحالة إلى: " . ($statusLabels[$request->status] ?? $request->status),
+            ['new_status' => $request->status]
+        );
 
         return response()->json([
             'success' => true,
@@ -588,19 +678,41 @@ class ServiceRequestController extends Controller
             }
         }
 
+        // Handle Image Upload
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('ratings', 'public');
+        }
+
+        // Check if rating exists to handle old image deletion
+        $existingRating = \App\Models\Rating::where('request_id', $id)
+            ->where('request_type', $requestType)
+            ->first();
+
+        if ($existingRating && $request->hasFile('image') && $existingRating->image_path) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($existingRating->image_path);
+        }
+
+        // Prepare data for updateOrCreate
+        $data = [
+            'user_id' => $user->id,
+            'product_rating' => $request->product_rating,
+            'service_rating' => $request->service_rating,
+            'how_found_us' => $request->how_found_us,
+            'customer_notes' => $request->customer_notes,
+        ];
+
+        if ($imagePath) {
+            $data['image_path'] = $imagePath;
+        }
+
         // Create or update rating
         $rating = \App\Models\Rating::updateOrCreate(
             [
                 'request_id' => $id,
                 'request_type' => $requestType,
             ],
-            [
-                'user_id' => $user->id,
-                'product_rating' => $request->product_rating,
-                'service_rating' => $request->service_rating,
-                'how_found_us' => $request->how_found_us,
-                'customer_notes' => $request->customer_notes,
-            ]
+            $data
         );
 
         return response()->json([

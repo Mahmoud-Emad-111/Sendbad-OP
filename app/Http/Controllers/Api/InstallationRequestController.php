@@ -13,11 +13,17 @@ use Illuminate\Support\Facades\Log;
 class InstallationRequestController extends Controller
 {
     protected $notificationService;
+    protected $activityLogger;
 
-    public function __construct(\App\Services\NotificationService $notificationService)
-    {
+    public function __construct(
+        \App\Services\NotificationService $notificationService,
+        \App\Services\ActivityLogger $activityLogger
+    ) {
         $this->notificationService = $notificationService;
+        $this->activityLogger = $activityLogger;
     }
+
+
     /**
      * List Installation Requests
      */
@@ -75,7 +81,7 @@ class InstallationRequestController extends Controller
             $installationRequest = InstallationRequest::create([
                 'user_id' => $request->user()->id,
                 'product_type' => $request->product_type,
-                'quantity' => $request->quantity,
+                // 'quantity' => $request->quantity,
                 'invoice_number' => 'B-' . $request->invoice_number,
                 'is_site_ready' => $request->boolean('is_site_ready'),
                 'readiness_details' => $request->readiness_details ?? [],
@@ -112,7 +118,7 @@ class InstallationRequestController extends Controller
                          $admin->fcm_token,
                          'طلب تركيب جديد 🔧',
                          "تم استلام طلب تركيب جديد #{$installationRequest->id} من {$request->user()->name}",
-                         ['request_id' => (string) $installationRequest->id, 'type' => 'new_installation_request']
+                         ['request_id' => (string) $installationRequest->id, 'type' => 'new_installation_request', 'request_type' => 'installation']
                      );
                  } else {
                      \App\Models\Notification::create([
@@ -120,10 +126,18 @@ class InstallationRequestController extends Controller
                         'title' => 'طلب تركيب جديد 🔧',
                         'body' => "تم استلام طلب تركيب جديد #{$installationRequest->id} من {$request->user()->name}",
                         'type' => 'new_installation_request',
-                        'data' => ['request_id' => (string) $installationRequest->id, 'type' => 'new_installation_request'],
+                        'data' => ['request_id' => (string) $installationRequest->id, 'type' => 'new_installation_request', 'request_type' => 'installation'],
                      ]);
                  }
             }
+
+            // Log Activity
+            $this->activityLogger->log(
+                $installationRequest,
+                'created',
+                'تم إنشاء طلب التركيب',
+                ['status' => 'pending']
+            );
 
             return response()->json([
                 'success' => true,
@@ -140,7 +154,31 @@ class InstallationRequestController extends Controller
 
     public function show($id)
     {
-        $request = InstallationRequest::with(['user', 'technician', 'attachments', 'rating'])->findOrFail($id);
+        $request = InstallationRequest::with(['user', 'technician', 'attachments', 'rating', 'activities.user'])->findOrFail($id);
+
+        // Load technician images
+        $technicianImages = \App\Models\RequestTechnicianImage::where([
+            'request_id' => $id,
+            'request_type' => 'installation'
+        ])
+        ->with('technician')
+        ->orderBy('created_at', 'desc')
+        ->get()
+        ->map(function ($image) {
+            return [
+                'id' => $image->id,
+                'image_url' => $image->image_url,
+                'technician' => [
+                    'id' => $image->technician->id,
+                    'name' => $image->technician->name
+                ],
+                'notes' => $image->notes,
+                'uploaded_at' => $image->created_at->toISOString()
+            ];
+        });
+
+        $request->technician_images = $technicianImages;
+
         return response()->json(['success' => true, 'data' => $request]);
     }
 
@@ -155,12 +193,20 @@ class InstallationRequestController extends Controller
         // Notify customer
         if ($installationRequest->user) {
             $this->notificationService->sendNotification(
-                $installationRequest->user->fcm_token ?? '',
-                'تم قبول طلب التركيب 🛠️',
-                "قام الفني بقبول طلب التركيب رقم #{$installationRequest->id} وهو في الطريق إليك.",
-                ['type' => 'installation_request_update', 'request_id' => (string) $installationRequest->id]
+                $installationRequest->user,
+                'Installation Request Accepted',
+                "Your installation request #{$installationRequest->id} has been accepted by the technician.",
+                ['type' => 'installation_request_update', 'request_id' => $installationRequest->id, 'request_type' => 'installation']
             );
         }
+
+        // Log Activity
+        $this->activityLogger->log(
+            $installationRequest,
+            'technician_accepted',
+            'تم قبول الطلب من قبل الفني',
+            ['status' => 'on_way', 'technician_id' => $request->user()->id]
+        );
 
         return response()->json([
             'success' => true,
@@ -209,15 +255,33 @@ class InstallationRequestController extends Controller
                 ];
 
                 $statusText = $statusLabels[$request->status] ?? $request->status;
+                $arabicStatus = $statusLabels[$request->status] ?? $request->status; // Assuming $arabicStatus is derived from $statusLabels
 
                 $this->notificationService->sendNotification(
-                    $customer->fcm_token ?? '',
-                    'تحديث حالة الطلب 🔔',
-                    "تم تغيير حالة طلب التركيب #{$installationRequest->id} إلى: {$statusText}",
-                    ['request_id' => (string) $installationRequest->id, 'type' => 'status_update']
+                    $installationRequest->user,
+                    'تحديث حالة طلب التركيب',
+                    "تم تحديث حالة طلب التركيب #{$installationRequest->id} إلى: {$arabicStatus}",
+                    ['request_id' => (string) $installationRequest->id, 'type' => 'status_update', 'request_type' => 'installation']
                 );
             }
         }
+
+        // Log Activity
+        $statusLabels = [
+            'pending' => 'قيد الانتظار',
+            'assigned' => 'تم الإسناد',
+            'on_way' => 'الفني في الطريق',
+            'in_progress' => 'جاري التنفيذ',
+            'completed' => 'مكتمل',
+            'canceled' => 'ملغي'
+        ];
+
+        $this->activityLogger->log(
+            $installationRequest,
+            'status_updated',
+            "تم تحديث الحالة إلى: " . ($statusLabels[$request->status] ?? $request->status),
+            ['new_status' => $request->status]
+        );
 
         return response()->json([
             'success' => true,
@@ -232,29 +296,65 @@ class InstallationRequestController extends Controller
     public function assignTechnician(Request $request, $id)
     {
         $request->validate([
-            'technician_id' => 'required|exists:users,id'
+            'technician_id' => 'required|exists:users,id',
+            'scheduled_at' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:scheduled_at'
         ]);
 
         $installationRequest = InstallationRequest::findOrFail($id);
-        $installationRequest->update([
+
+        $updateData = [
             'technician_id' => $request->technician_id,
             'status' => 'assigned'
-        ]);
+        ];
 
-        // Notify Technician
+        if ($request->filled('scheduled_at')) {
+            $updateData['scheduled_at'] = $request->scheduled_at;
+        }
+        if ($request->filled('end_date')) {
+            $updateData['end_date'] = $request->end_date;
+        }
+
+        $installationRequest->update($updateData);
+
         $technician = \App\Models\User::find($request->technician_id);
+        $customer = $installationRequest->user;
+
+        $visitDate = $installationRequest->scheduled_at ? $installationRequest->scheduled_at->format('Y-m-d H:i') : 'غير محدد';
+        $endDate = $installationRequest->end_date ? $installationRequest->end_date->format('Y-m-d') : 'غير محدد';
+
+        // 1. Notify Technician
         if ($technician && $technician->fcm_token) {
             $this->notificationService->sendNotification(
                 $technician->fcm_token,
                 'مهمة تركيب جديدة 🛠️',
-                "تم تعيين طلب تركيب جديد لك: #{$installationRequest->id}\nالعنوان: {$installationRequest->address}\nالمنتج: {$installationRequest->product_type}",
-                ['request_id' => (string) $installationRequest->id, 'type' => 'assignment']
+                "تم تعيين طلب تركيب جديد لك: #{$installationRequest->id}\nالعنوان: {$installationRequest->address}\nتاريخ الزيارة: {$visitDate}\nتاريخ التسليم: {$endDate}",
+                ['request_id' => (string) $installationRequest->id, 'type' => 'assignment', 'request_type' => 'installation']
             );
         }
 
+        // 2. Notify Customer
+        if ($customer && $customer->fcm_token) {
+            $techName = $technician ? $technician->name : 'فني';
+            $this->notificationService->sendNotification(
+                $customer->fcm_token,
+                'تم تحديد موعد الزيارة 📅',
+                "تم تعيين الفني {$techName} لطلب التركيب #{$installationRequest->id}.\nموعد الزيارة: {$visitDate}\nتاريخ التسليم المتوقع: {$endDate}",
+                ['request_id' => (string) $installationRequest->id, 'type' => 'status_update', 'request_type' => 'installation']
+            );
+        }
+
+        // Log Activity
+        $this->activityLogger->log(
+            $installationRequest,
+            'assigned',
+            "تم تعيين الفني: " . ($technician ? $technician->name : 'غير محدد'),
+            ['technician_id' => $request->technician_id, 'visit_date' => $visitDate]
+        );
+
         return response()->json([
             'success' => true,
-            'message' => 'Technician assigned successfully',
+            'message' => 'Technician assigned and parties notified successfully',
             'data' => $installationRequest
         ]);
     }

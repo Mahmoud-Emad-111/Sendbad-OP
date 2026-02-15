@@ -23,7 +23,7 @@ class StoreInstallationRequest extends FormRequest
     {
         return [
             'product_type' => 'required|string',
-            'quantity' => 'required|integer|min:1',
+            // 'quantity' => 'required|integer|min:1',
             'invoice_number' => 'required|string',
             'is_site_ready' => 'required|boolean',
             'readiness_details' => 'array', // Optional

@@ -22,10 +22,10 @@ class NotificationController extends Controller
             $query->whereNull('read_at');
         }
 
-        // $perPage = (int) $request->get('per_page', 20);
+        $perPage = (int) $request->get('per_page', 20);
 
-        // $notifications = $query->paginate($perPage);
-        $notifications = $query->get();
+        $notifications = $query->paginate($perPage);
+        // $notifications = $query->get();
 
         return response()->json([
             'success' => true,

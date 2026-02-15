@@ -60,4 +60,9 @@ class ServiceRequest extends Model
         return $this->hasOne(Rating::class, 'request_id')
             ->where('request_type', 'service');
     }
+
+    public function activities()
+    {
+        return $this->morphMany(RequestActivity::class, 'request');
+    }
 }

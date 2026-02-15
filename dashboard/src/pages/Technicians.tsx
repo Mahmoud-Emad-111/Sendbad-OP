@@ -31,7 +31,7 @@ export default function Technicians() {
   const loadTechnicians = async () => {
     try {
       setLoading(true);
-      const res = await adminService.getUsers('technician');
+      const res = await adminService.getUsers(undefined, undefined, 'technician');
       if (res.success) {
         setTechnicians(res.data);
       }
@@ -130,7 +130,7 @@ export default function Technicians() {
                 </button>
                 <button
                     onClick={async () => {
-                        if (!confirm(t(`Delete ${selectedTechs.length} selected technician(s)?`))) return;
+                        if (!confirm(t('common.delete_selected_confirm', { count: selectedTechs.length }))) return;
                         try {
                             setBulkDeleting(true);
                             const res = await api.post('/admin/users/bulk-delete', { ids: selectedTechs });
@@ -149,7 +149,7 @@ export default function Technicians() {
                     className="bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-700 transition-colors disabled:opacity-50"
                 >
                     <Trash2 size={16} />
-                    {bulkDeleting ? t('common.deleting') + '...' : t('tracking.delete_selected')}
+                    {bulkDeleting ? t('common.deleting') + '...' : t('common.delete_selected')}
                 </button>
             </div>
         )}

@@ -23,6 +23,7 @@ class InstallationRequestResource extends JsonResource
             'address' => $this->address,
             'is_site_ready' => $this->is_site_ready,
             'scheduled_at' => $this->scheduled_at ? $this->scheduled_at->toIso8601String() : null,
+            'notes' => $this->notes,
             'created_at' => $this->created_at->toIso8601String(),
             'user' => $this->user ? [
                 'id' => $this->user->id,

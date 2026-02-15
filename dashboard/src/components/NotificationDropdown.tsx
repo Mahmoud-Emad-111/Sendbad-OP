@@ -1,21 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, AlertTriangle, Clock } from 'lucide-react';
+import { Bell, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/auth';
 import clsx from 'clsx';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 
-interface Notification {
-  id: string | number;
-  type: 'deadline' | 'new_request';
-  title: string;
-  message: string;
-  time: string;
-  date: string;
-  requestId: number;
-  isRead: boolean;
-}
+// interface Notification {
+//   id: string | number;
+//   type: 'deadline' | 'new_request';
+//   title: string;
+//   message: string;
+//   time: string;
+//   date: string;
+//   requestId: number;
+//   isRead: boolean;
+// }
 
 export default function NotificationDropdown() {
   const { t, i18n } = useTranslation();

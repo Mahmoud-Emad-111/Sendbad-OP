@@ -17,12 +17,20 @@ class Rating extends Model
         'service_rating',
         'how_found_us',
         'customer_notes',
+        'image_path',
     ];
 
     protected $casts = [
         'product_rating' => 'integer',
         'service_rating' => 'integer',
     ];
+
+    protected $appends = ['image_url'];
+
+    public function getImageUrlAttribute()
+    {
+        return $this->image_path ? asset('storage/' . $this->image_path) : null;
+    }
 
     /**
      * Get the user who submitted the rating
@@ -35,13 +43,11 @@ class Rating extends Model
     /**
      * Get the rated request (polymorphic)
      */
+    /**
+     * Get the rated request (polymorphic)
+     */
     public function request()
     {
-        if ($this->request_type === 'service') {
-            return $this->belongsTo(ServiceRequest::class, 'request_id');
-        } elseif ($this->request_type === 'installation') {
-            return $this->belongsTo(InstallationRequest::class, 'request_id');
-        }
-        return null;
+        return $this->morphTo(__FUNCTION__, 'request_type', 'request_id');
     }
 }

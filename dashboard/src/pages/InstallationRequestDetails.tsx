@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api, { getBaseUrl } from '../services/auth';
-import { Calendar, User, Settings, AlertCircle, CheckCircle, Clock, MapPin, ArrowRight, Package, X } from 'lucide-react';
+import { Calendar, User, Settings, AlertCircle, CheckCircle, Clock, MapPin, ArrowRight, Package, X, Image as ImageIcon, Camera } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import clsx from 'clsx';
 import LoadingSpinner from '../components/LoadingSpinner';
+import RequestTimeline from '../components/RequestTimeline';
 import { useTranslation } from 'react-i18next';
 
 const containerStyle = {
@@ -36,6 +37,9 @@ export default function InstallationRequestDetails() {
     const [assignDates, setAssignDates] = useState({ start: '', end: '' });
     const [technicians, setTechnicians] = useState([]);
     const [selectedTech, setSelectedTech] = useState<number | null>(null);
+
+    // Rating State
+    const [showRating, setShowRating] = useState(false);
 
     // Readiness Details State
     const [readinessModal, setReadinessModal] = useState(false);
@@ -209,10 +213,10 @@ export default function InstallationRequestDetails() {
             if (res.data.success) {
                 setRequest(res.data.data);
                 setAssignModal(false);
-                alert(t('requests.assigned_success') || 'Technician Assigned Successfully');
+                alert(t('requests.assigned_success'));
             }
         } catch (error) {
-            alert(t('common.error') || 'Error assigning technician');
+            alert(t('common.error'));
         } finally {
             setUpdating(false);
         }
@@ -377,31 +381,32 @@ export default function InstallationRequestDetails() {
                     </div>
 
                     {/* Images Gallery */}
-                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <h2 className="text-lg font-bold text-slate-900 mb-4">{t('request_details.attachments')}</h2>
-                         {request.attachments && request.attachments.length > 0 ? (
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {/* Customer Signature (Images) */}
+                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+                        <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                            <ImageIcon size={20} className="text-purple-600" />
+                            {t('request_details.customer_signature')}
+                            {request.attachments && (
+                                <span className="text-sm font-normal text-slate-500">({request.attachments.length})</span>
+                            )}
+                        </h2>
+                        {request.attachments && request.attachments.length > 0 ? (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 {request.attachments.map((img: any) => (
-                                    <div key={img.id} className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 group cursor-pointer">
+                                    <div key={img.id} className="relative group aspect-square rounded-lg overflow-hidden border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-all">
                                         <img
                                             src={`${getBaseUrl()}/storage/${img.file_path}`}
-                                            alt="Request Attachment"
-                                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                            alt="Customer Signature"
+                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                            onClick={() => window.open(`${getBaseUrl()}/storage/${img.file_path}`, '_blank')}
                                         />
-                                        <a
-                                            href={`${getBaseUrl()}/storage/${img.file_path}`}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-medium"
-                                        >
-                                            {t('request_details.view_image')}
-                                        </a>
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-8 bg-slate-50 rounded-lg text-slate-400 text-sm border border-dashed border-slate-200">
-                                {t('request_details.no_images')}
+                            <div className="text-center py-8 text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                                {t('request_details.no_attachments')}
                             </div>
                         )}
                     </div>
@@ -409,10 +414,44 @@ export default function InstallationRequestDetails() {
 
                     {/* Customer Rating Section - Enhanced Design */}
                     {request.rating && request.status === 'completed' && (
-                        <div className="bg-gradient-to-br from-amber-50 via-orange-50/30 to-yellow-50/50 p-8 rounded-2xl border-2 border-amber-200/60 shadow-lg relative overflow-hidden">
-                            {/* Decorative Background Elements */}
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-200/20 rounded-full -mr-16 -mt-16"></div>
-                            <div className="absolute bottom-0 left-0 w-24 h-24 bg-orange-200/20 rounded-full -ml-12 -mb-12"></div>
+                        <div className="mt-8">
+                            <button
+                                onClick={() => setShowRating(!showRating)}
+                                className="w-full flex items-center justify-between p-4 bg-white rounded-xl border border-amber-200 shadow-sm hover:bg-amber-50 transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
+                                        <Star size={20} className="fill-amber-600" />
+                                    </div>
+                                    <div className="text-right">
+                                        <h3 className="font-bold text-slate-900">{t('request_details.view_rating')}</h3>
+                                        <div className="flex gap-1 mt-1">
+                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                <Star
+                                                    key={star}
+                                                    size={12}
+                                                    className={clsx(
+                                                        star <= Math.round((request.rating.product_rating + request.rating.service_rating) / 2)
+                                                            ? "text-amber-400 fill-amber-400"
+                                                            : "text-gray-300 fill-gray-300"
+                                                    )}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className={clsx("transform transition-transform duration-200", showRating ? "rotate-180" : "")}>
+                                    <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </button>
+
+                            {showRating && (
+                                <div className="mt-4 bg-gradient-to-br from-amber-50 via-orange-50/30 to-yellow-50/50 p-8 rounded-2xl border-2 border-amber-200/60 shadow-lg relative overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
+                                    {/* Decorative Background Elements */}
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-200/20 rounded-full -mr-16 -mt-16"></div>
+                                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-orange-200/20 rounded-full -ml-12 -mb-12"></div>
 
                             {/* Header */}
                             <div className="relative z-10 mb-6">
@@ -426,7 +465,7 @@ export default function InstallationRequestDetails() {
                                         <h2 className="text-2xl font-bold text-slate-900">
                                             {t('request_details.customer_rating')}
                                         </h2>
-                                        <p className="text-sm text-slate-600">تقييم العميل للخدمة والمنتج</p>
+                                        <p className="text-sm text-slate-600">{t('rating.subtitle')}</p>
                                     </div>
                                 </div>
 
@@ -436,7 +475,7 @@ export default function InstallationRequestDetails() {
                                         <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600">
                                             {((request.rating.product_rating + request.rating.service_rating) / 2).toFixed(1)}
                                         </div>
-                                        <div className="text-xs text-slate-500 font-medium mt-1">متوسط التقييم</div>
+                                        <div className="text-xs text-slate-500 font-medium mt-1">{t('rating.average')}</div>
                                     </div>
                                     <div className="h-12 w-px bg-amber-200"></div>
                                     <div className="flex gap-1">
@@ -586,9 +625,32 @@ export default function InstallationRequestDetails() {
                                         </div>
                                     </div>
                                 )}
+
+                                {/* Rating Image */}
+                                {request.rating.image_url && (
+                                    <div className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-blue-100">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <ImageIcon size={16} className="text-blue-500" />
+                                            <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                                {t('rating.rating_image')}
+                                            </span>
+                                        </div>
+                                        <div className="relative group aspect-video rounded-lg overflow-hidden border border-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all max-w-sm">
+                                            <img
+                                                src={request.rating.image_url}
+                                                alt="Rating"
+                                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                                onClick={() => window.open(request.rating.image_url, '_blank')}
+                                            />
+                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    )}
+                            </div>
+                        )}
+                    </div>
+                )}
                 </div>
 
                 {/* Sidebar (Left Side) */}
@@ -674,16 +736,82 @@ export default function InstallationRequestDetails() {
                                 {t('request_details.no_technician')}
                             </div>
                         )}
+
+                    </div>
+
+                    {/* Request History Timeline */}
+                    <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 delay-200">
+                        <RequestTimeline activities={request.activities || []} />
                     </div>
                 </div>
+
             </div>
+
+            {/* Customer Images Section */}
+            {request.attachments && request.attachments.length > 0 && (
+                <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4">
+                        <ImageIcon className="text-purple-600" size={20} />
+                        <h3 className="text-lg font-bold text-slate-900">
+                            {t('request_details.customer_images')}
+                        </h3>
+                        <span className="text-sm text-slate-500">
+                            ({request.attachments.length})
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {request.attachments.map((img: any, idx: number) => (
+                            <img
+                                key={idx}
+                                src={getBaseUrl() + '/storage/' + img.file_path}
+                                alt={`Customer ${idx + 1}`}
+                                className="w-full h-48 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-90 transition-opacity"
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Technician Images Section */}
+            {request.technician_images && request.technician_images.length > 0 && (
+                <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Camera className="text-blue-600" size={20} />
+                        <h3 className="text-lg font-bold text-slate-900">
+                            {t('request_details.technician_images')}
+                        </h3>
+                        <span className="text-sm text-slate-500">
+                            ({request.technician_images.length})
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {request.technician_images.map((img: any, idx: number) => (
+                            <div key={idx} className="relative group">
+                                <img
+                                    src={img.image_url}
+                                    alt={`Technician ${idx + 1}`}
+                                    className="w-full h-48 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-90 transition-opacity"
+                                />
+                                <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white text-xs p-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <p className="font-medium">{img.technician?.name}</p>
+                                    <p className="text-slate-300">
+                                        {new Date(img.uploaded_at).toLocaleDateString(i18n.language === 'ar' ? 'ar-EG' : 'en-US')}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
              {/* Readiness Edit Modal */}
             {readinessModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
                         <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-bold">{t('request_details.edit_readiness') || 'Edit Site Readiness'}</h2>
+                            <h2 className="text-xl font-bold">{t('request_details.edit_readiness')}</h2>
                             <button onClick={() => setReadinessModal(false)} className="text-slate-400 hover:text-slate-600">
                                 <X size={24} />
                             </button>

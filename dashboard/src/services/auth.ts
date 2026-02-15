@@ -41,8 +41,12 @@ export const authService = {
 };
 
 export const adminService = {
-    getUsers: async (role?: string) => {
-        const params = role ? { role } : {};
+    getUsers: async (page?: number, search?: string, role?: string) => {
+        const params: any = {};
+        if (page) params.page = page;
+        if (search) params.search = search;
+        if (role) params.role = role;
+
         const response = await api.get('/admin/users', { params });
         return response.data;
     },
@@ -57,6 +61,23 @@ export const adminService = {
     createManualUser: async (data: any) => {
         const response = await api.post('/admin/users', data);
         return response.data;
+    },
+    updateUser: async (id: number, data: any) => {
+        try {
+            const response = await api.put(`/admin/users/${id}`, data);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    sendCustomNotification: async (data: any) => {
+        try {
+            const response = await api.post('/admin/notifications/send', data);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
     }
 };
 

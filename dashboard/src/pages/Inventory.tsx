@@ -63,7 +63,7 @@ export default function Inventory() {
                     <table className="w-full text-start">
                         <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-medium text-sm">
                             <tr>
-                                <th className="px-6 py-4 text-center">ID</th>
+                                <th className="px-6 py-4 text-center">#{t('common.id')}</th>
                                 <th className="px-6 py-4 w-1/3 text-start">{t('inventory.product_name')}</th>
                                 <th className="px-6 py-4 text-start">{t('inventory.price')}</th>
                                 <th className="px-6 py-4 text-center">{t('inventory.quantity')}</th>

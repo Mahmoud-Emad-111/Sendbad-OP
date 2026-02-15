@@ -54,4 +54,9 @@ class InstallationRequest extends Model
         return $this->hasOne(Rating::class, 'request_id')
             ->where('request_type', 'installation');
     }
+
+    public function activities()
+    {
+        return $this->morphMany(RequestActivity::class, 'request');
+    }
 }

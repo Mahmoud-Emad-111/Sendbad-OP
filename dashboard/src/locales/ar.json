@@ -51,7 +51,15 @@
     "already": "بالفعل",
     "today": "اليوم",
     "deleting": "جاري الحذف",
-    "selected": "محدد"
+    "selected": "محدد",
+    "print_report": "طباعة التقرير",
+    "requests": "الطلبات",
+    "id": "الرقم",
+    "service_type": "نوع الخدمة",
+    "delete_selected_confirm": "هل أنت متأكد من حذف {{count}} عنصر محدد؟",
+    "delete_selected": "حذف المحددة",
+    "currency": "ر.ع.",
+    "error": "خطأ"
   },
   "branding": {
     "app_name": "سندباد",
@@ -92,9 +100,12 @@
       "name": "الاسم",
       "phone": "رقم الهاتف",
       "role": "الدور",
+      "manual_orders": "الطلبات اليدوية",
       "status": "الحالة",
       "created_at": "تاريخ التسجيل"
-    }
+    },
+    "delete_confirm_single": "هل أنت متأكد من حذف هذا المستخدم؟",
+    "delete_success": "تم حذف المستخدم بنجاح"
   },
   "user_details": {
     "not_found": "لم يتم العثور على العميل",
@@ -118,7 +129,9 @@
     "remaining": "المتبقي",
     "fully_paid": "مدفوع بالكامل",
     "no_financial_records": "لا يوجد سجلات مالية",
+    "no_financial_records_help": "لم يتم العثور على طلبات أو فواتير لهذا العميل.",
     "user_not_linked_odoo": "العميل غير مربوط بـ Odoo",
+    "odoo_link_help": "لعرض البيانات المالية، يجب ربط هذا العميل بجهة اتصال في Odoo.",
     "manual_search": "فتح Odoo للبحث يدوياً"
   },
   "requests": {
@@ -137,6 +150,7 @@
     "scheduled_at": "تاريخ الزيارة (البدء)",
     "end_date": "تاريخ التسليم (الانتهاء)",
     "assign_technician": "إسناد لفني",
+    "assigned_success": "تم تعيين الفني بنجاح",
     "not_assigned": "غير مسند",
     "request_details": "تفاصيل الطلب",
     "client_info": "بيانات العميل",
@@ -155,6 +169,10 @@
       "repair": "إصلاح عاجل",
       "inspection": "فحص فني",
       "installation": "تركيب جديد"
+    },
+    "table": {
+      "customer": "العميل",
+      "status": "الحالة"
     }
   },
   "settings_page": {
@@ -172,7 +190,9 @@
     "system_notifications": "تنبيهات النظام",
     "sound_notification": "تفعيل الإشعارات الصوتية",
     "sound_desc": "تشغيل صوت عند وصول طلبات جديدة أو تنبيهات",
-    "email_notification": "إشعارات البريد الإلكتروني"
+    "email_notification": "إشعارات البريد الإلكتروني",
+    "update_success": "تم تحديث البيانات بنجاح",
+    "update_error": "حدث خطأ أثناء التحديث"
   },
   "stats": {
     "total_requests": "إجمالي الطلبات",
@@ -228,18 +248,6 @@
     "delete_confirm_title": "حذف الفني",
     "delete_confirm_msg": "هل أنت متأكد من حذف",
     "delete_error": "فشل في حذف الفني"
-  },
-  "reports": {
-    "title": "تقارير الأداء",
-    "subtitle": "تحليل أداء الفنيين ورضا العملاء",
-    "avg_completion_time": "متوسط سرعة الإنجاز",
-    "hours": "ساعة",
-    "highest_rating": "أعلى تقييم",
-    "total_ratings": "إجمالي التقييمات",
-    "top_technicians": "أفضل الفنيين أداءً",
-    "completed_requests": "طلب مكتمل",
-    "no_data": "لا يوجد بيانات كافية",
-    "customer_satisfaction": "تحليل رضا العملاء"
   },
   "live_map": {
     "title": "تتبع المناديب (Live Tracking)",
@@ -299,36 +307,7 @@
     "sending": "جاري الإرسال...",
     "submit_btn": "إرسال الطلب"
   },
-  "request_details": {
-    "installation_title": "طلب تركيب #{{id}}",
-    "service_title": "تفاصيل الطلب #{{id}}",
-    "created_at": "تم الإنشاء:",
-    "change_status": "تغيير الحالة",
-    "client_info": "بيانات العميل",
-    "view_client_profile": "عرض ملف العميل",
-    "schedule_details": "تفاصيل الموعد",
-    "technician_assigned": "الفني المسؤول",
-    "no_technician": "لم يتم تعيين فني بعد",
-    "client_location": "موقع العميل",
-    "no_location": "لا يوجد موقع مسجل لهذا الطلب",
-    "attachments": "المرفقات والصور",
-    "view_image": "تكبير الصورة",
-    "no_images": "لا يوجد صور مرفقة",
-    "update_status_modal": "تحديث حالة الطلب",
-    "new_status": "الحالة الجديدة",
-    "select_status": "-- اختر الحالة --",
-    "notify_client": "إرسال إشعار للعميل بالتحديث",
-    "update_success": "تم تحديث الحالة بنجاح",
-    "update_error": "حدث خطأ أثناء التحديث",
-    "not_found": "الطلب غير موجود",
-    "installation_data": "بيانات التركيب",
-    "site_status": "حالة الموقع",
-    "ready": "جاهز للتركيب",
-    "not_ready": "غير جاهز",
-    "problem_description": "وصف المشكلة",
-    "service_type": "نوع الخدمة",
-    "customer_rating": "تقييم العميل"
-  },
+
   "status": {
     "pending": "قيد الانتظار",
     "assigned": "تم الإسناد",
@@ -349,10 +328,23 @@
     "test_sound": "تجربة الصوت 🔊",
     "new_count": "{{count}} جديد",
     "empty": "لا توجد إشعارات جديدة",
-    "clear_all": "مسح الكل"
+    "clear_all": "مسح الكل",
+    "subtitle": "إرسال تنبيهات للمستخدمين والفنيين",
+    "recipient": "المستلم",
+    "all_users": "كل المستخدمين",
+    "all_technicians": "كل الفنيين",
+    "specific_user": "مستخدم محدد",
+    "search_user": "بحث عن مستخدم",
+    "search_placeholder": "الاسم، البريد أو الهاتف...",
+    "msg_title": "عنوان الرسالة",
+    "title_placeholder": "مثال: عرض خاص",
+    "msg_body": "نص الرسالة",
+    "body_placeholder": "اكتب رسالتك هنا...",
+    "send": "إرسال الإشعار"
   },
   "new_service_request": {
     "title": "طلب صيانة جديد (للإدارة)",
+    "invoice_number": "رقم الفاتورة",
     "subtitle": "إضافة طلب صيانة للعميل",
     "phone_lookup": "البحث برقم الهاتف",
     "invalid_phone": "رقم هاتف غير صحيح",
@@ -368,7 +360,9 @@
     "fill_required": "يرجى ملء جميع الحقول المطلوبة",
     "images_selected": "صورة تم اختيارها",
     "success": "تم إنشاء الطلب بنجاح!",
-    "error": "حدث خطأ أثناء إنشاء الطلب"
+    "error": "حدث خطأ أثناء إنشاء الطلب",
+    "is_new_user": "سيتم تسجيل المستخدم تلقائياً",
+    "submit_btn": "إرسال الطلب"
   },
   "new_installation_request": {
     "title": "طلب تركيب جديد (للإدارة)",
@@ -395,26 +389,109 @@
     "fill_required": "يرجى ملء الحقول المطلوبة",
     "success": "تم إنشاء العميل بنجاح"
   },
-  "technician_history": {
-    "title": "سجل طلبات الفني",
-    "total_requests": "إجمالي الطلبات",
-    "completed": "المكتملة",
-    "pending": "قيد التنفيذ",
-    "request_history": "سجل الطلبات",
-    "no_requests": "لا توجد طلبات",
-    "service": "صيانة",
-    "installation": "تركيب",
-    "customer": "العميل",
-    "type": "النوع",
-    "status_pending": "قيد الانتظار",
-    "status_in_progress": "قيد التنفيذ",
-    "status_completed": "مكتمل",
-    "status_cancelled": "ملغي"
-  },
+
   "rating": {
     "product_satisfaction": "رضا العميل عن المنتج",
     "service_satisfaction": "رضا العميل عن الخدمة",
     "how_found_us": "كيف وجدتنا",
-    "customer_feedback": "رأي العميل"
+    "customer_feedback": "رأي العميل",
+    "subtitle": "تقييم العميل للخدمة والمنتج",
+    "average": "متوسط التقييم",
+    "rating_image": "توقيع العميل"
+  },
+
+
+  "technician_history": {
+    "title": "سجل الفني",
+    "total_requests": "إجمالي الطلبات",
+    "completed": "المكتملة",
+    "in_progress": "قيد التنفيذ",
+    "pending": "قيد الانتظار",
+    "request_history": "سجل الطلبات",
+    "no_requests": "لا توجد طلبات",
+    "no_requests_desc": "لم يتم تعيين أي طلبات لهذا الفني بعد",
+    "service": "صيانة",
+    "installation": "تركيب",
+    "customer": "العميل",
+    "type": "النوع",
+    "all_types": "جميع الأنواع",
+    "requests": "طلب",
+    "status_pending": "قيد الانتظار",
+    "status_assigned": "تم التعيين",
+    "status_on_way": "في الطريق",
+    "status_in_progress": "قيد التنفيذ",
+    "status_completed": "مكتمل",
+    "status_canceled": "ملغي"
+  },
+  "request_details": {
+    "installation_title": "طلب تركيب #{{id}}",
+    "service_title": "طلب صيانة #{{id}}",
+    "created_at": "تم الإنشاء في:",
+    "client_info": "معلومات العميل",
+    "service_type": "نوع الخدمة",
+    "change_status": "تغيير الحالة",
+    "update_status_modal": "تحديث حالة الطلب",
+    "new_status": "الحالة الجديدة",
+    "select_status": "-- اختر الحالة --",
+    "view_image": "عرض الصورة",
+    "notify_client": "إشعار العميل",
+    "client_location": "موقع العميل",
+    "problem_description": "وصف المشكلة",
+    "installation_data": "تفاصيل التركيب",
+    "site_status": "جاهزية الموقع",
+    "ready": "جاهز",
+    "not_ready": "غير جاهز",
+    "edit_readiness": "تعديل حالة الجاهزية",
+    "site_ready_question": "هل الموقع جاهز؟",
+    "readiness_checklist": "قائمة الجاهزية",
+    "view_client_profile": "عرض ملف العميل",
+    "schedule_details": "تفاصيل الموعد",
+    "technician_assigned": "الفني المعين",
+    "no_technician": "لم يتم تعيين فني بعد",
+    "attachments": "المرفقات",
+    "no_images": "لا توجد صور مرفقة",
+    "customer_images": "صور العميل",
+    "technician_images": "صور الفني",
+    "uploaded_by": "تم الرفع بواسطة",
+    "no_customer_images": "لا توجد صور من العميل",
+    "no_technician_images": "لا توجد صور من الفني بعد",
+    "not_found": "الطلب غير موجود",
+    "update_success": "تم تحديث الحالة بنجاح",
+    "update_error": "فشل تحديث الحالة",
+    "customer_rating": "تقييم العميل",
+    "no_location": "لم يتم توفير موقع",
+    "rating_image": "صورة التقييم",
+    "view_rating": "عرض تقييم العميل",
+    "customer_signature": "توقيع العميل",
+    "no_attachments": "لا توجد مرفقات"
+  },
+  "reports": {
+    "title": "التقارير والتحليلات",
+    "subtitle": "مؤشرات الأداء والرؤى",
+    "avg_completion_time": "متوسط وقت الإنجاز",
+    "hours": "ساعات",
+    "highest_rating": "أعلى تقييم",
+    "total_requests": "إجمالي الطلبات",
+    "technician_performance": "أداء الفنيين",
+    "daily_activity": "النشاط اليومي",
+    "recent_ratings": "أحدث تقييمات العملاء",
+    "no_ratings": "لا توجد تقييمات حتى الآن",
+    "recent_transactions": "أحدث المعاملات",
+    "invoice": "رقم الفاتورة",
+    "customer": "العميل",
+    "amount": "المبلغ",
+    "status": "الحالة",
+    "top_customers": "أهم العملاء",
+    "total_ratings": "إجمالي التقييمات",
+    "customer_satisfaction": "رضا العملاء",
+    "top_technicians": "أفضل الفنيين أداءً",
+    "completed_requests": "طلب مكتمل",
+    "no_data": "لا يوجد بيانات كافية",
+    "daily_activity_log": "سجل النشاط اليومي",
+    "completed_on": "الطلبات المكتملة في",
+    "no_completed": "لا يوجد طلبات مكتملة في هذا التاريخ",
+    "daily_report": "تقرير العمليات اليومي",
+    "orders": "طلب",
+    "paid": "مدفوع"
   }
 }

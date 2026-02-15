@@ -57,14 +57,14 @@ export default function Users() {
   };
 
   const deleteSingle = async (userId: number) => {
-    if (!confirm(t('Are you sure you want to delete this user?'))) return;
+    if (!confirm(t('users.delete_confirm_single'))) return;
 
     try {
       setDeleting(true);
       const res = await api.delete(`/admin/users/${userId}`);
       if (res.data.success) {
         setUsers(prev => prev.filter(u => u.id !== userId));
-        alert(t('User deleted successfully'));
+        alert(t('users.delete_success'));
       }
     } catch (error: any) {
       alert(error.response?.data?.message || 'Error deleting user');
@@ -75,7 +75,7 @@ export default function Users() {
 
   const deleteSelected = async () => {
     if (selectedUsers.length === 0) return;
-    if (!confirm(t(`Delete ${selectedUsers.length} selected user(s)?`))) return;
+    if (!confirm(t('common.delete_selected_confirm', { count: selectedUsers.length }))) return;
 
     try {
       setDeleting(true);
@@ -126,7 +126,7 @@ export default function Users() {
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-blue-900 font-medium">
-              {selectedUsers.length} {t('selected')}
+              {selectedUsers.length} {t('common.selected')}
             </span>
             <button
               onClick={() => setSelectedUsers([])}
@@ -142,7 +142,7 @@ export default function Users() {
             className="bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-700 transition-colors disabled:opacity-50"
           >
             <Trash2 size={16} />
-            {deleting ? t('common.deleting') + '...' : t('Delete Selected')}
+            {deleting ? t('common.deleting') + '...' : t('common.delete_selected')}
           </button>
         </div>
       )}
@@ -194,7 +194,7 @@ export default function Users() {
                         <th className="px-6 py-4 text-start">{t('users.table.name')}</th>
                         <th className="px-6 py-4 text-start">{t('users.table.phone')}</th>
                         <th className="px-6 py-4 text-start">{t('users.table.role')}</th>
-                        <th className="px-6 py-4 text-start">{t('Manual Orders')}</th>
+                        <th className="px-6 py-4 text-start">{t('users.table.manual_orders')}</th>
                         <th className="px-6 py-4 text-start">{t('users.table.status')}</th>
                         <th className="px-6 py-4 text-start">{t('common.actions')}</th>
                     </tr>

@@ -19,6 +19,7 @@ import InstallationRequestDetails from './pages/InstallationRequestDetails';
 import NewServiceRequest from './pages/NewServiceRequest';
 import NewAdminInstallationRequest from './pages/NewAdminInstallationRequest';
 import NewCustomer from './pages/NewCustomer';
+import Notifications from './pages/Notifications';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -47,6 +48,7 @@ function App() {
             <Route path="inventory" element={<Inventory />} />
             <Route path="reports" element={<Reports />} />
             <Route path="requests/:id" element={<ServiceRequestDetails />} />
+            <Route path="notifications" element={<Notifications />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Route>

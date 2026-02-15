@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api, { getBaseUrl } from '../services/auth';
-import { Calendar, User, Settings, AlertCircle, CheckCircle, Clock, MapPin, ArrowRight } from 'lucide-react';
+import { Calendar, User, Settings, AlertCircle, CheckCircle, Clock, MapPin, ArrowRight, Image as ImageIcon, Camera, Star } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import clsx from 'clsx';
 import LoadingSpinner from '../components/LoadingSpinner';
+import RequestTimeline from '../components/RequestTimeline';
 import { useTranslation } from 'react-i18next';
 
 const containerStyle = {
@@ -30,6 +31,7 @@ export default function ServiceRequestDetails() {
     const [updating, setUpdating] = useState(false);
     const [newStatus, setNewStatus] = useState('');
     const [sendNotification, setSendNotification] = useState(true);
+    const [showRating, setShowRating] = useState(false);
 
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
@@ -42,10 +44,13 @@ export default function ServiceRequestDetails() {
 
     const loadRequest = async () => {
         try {
-            const res = await api.get('/requests');
+            const res = await api.get(`/admin/requests/${id}`);
             if (res.data.success) {
-                const found = res.data.data.find((r: any) => r.id === Number(id));
-                setRequest(found);
+                setRequest(res.data.data);
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('show_rating') === 'true') {
+                    setShowRating(true);
+                }
             }
         } catch (error) {
             console.error(error);
@@ -172,6 +177,30 @@ export default function ServiceRequestDetails() {
                         </div>
                     </div>
 
+                    {/* Customer Signature (Images) */}
+                    {request.attachments && request.attachments.length > 0 && (
+                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+                            <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <ImageIcon size={20} className="text-purple-600" />
+                                {t('request_details.customer_signature')}
+                                <span className="text-sm font-normal text-slate-500">({request.attachments.length})</span>
+                            </h2>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                {request.attachments.map((img, idx) => (
+                                    <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-all">
+                                        <img
+                                            src={img.file_url}
+                                            alt={`Signature ${idx + 1}`}
+                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                            onClick={() => window.open(img.file_url, '_blank')}
+                                        />
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Description */}
                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                         <h2 className="text-lg font-bold text-slate-900 mb-4">{t('request_details.problem_description')}</h2>
@@ -258,100 +287,193 @@ export default function ServiceRequestDetails() {
                         )}
                     </div>
 
-
-                    {/* Customer Rating Section - Enhanced Design */}
-                    {request.rating && request.status === 'completed' && (
-                        <div className="bg-linear-to-br from-amber-50 via-orange-50/30 to-yellow-50/50 p-8 rounded-2xl border-2 border-amber-200/60 shadow-lg relative overflow-hidden">
-                            {/* Decorative Background Elements */}
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-200/20 rounded-full -mr-16 -mt-16"></div>
-                            <div className="absolute bottom-0 left-0 w-24 h-24 bg-orange-200/20 rounded-full -ml-12 -mb-12"></div>
-
-                            {/* Header */}
-                            <div className="relative z-10 mb-6">
-                                <div className="flex items-center gap-3 mb-2">
-                                    <div className="p-2.5 bg-linear-to-br from-amber-400 to-orange-500 rounded-xl shadow-md">
-                                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <h2 className="text-2xl font-bold text-slate-900">
-                                            {t('request_details.customer_rating')}
-                                        </h2>
-                                        <p className="text-sm text-slate-600">تقييم العميل للخدمة والمنتج</p>
-                                    </div>
-                                </div>
-
-                                {/* Overall Rating Summary */}
-                                <div className="flex items-center gap-4 mt-4 p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-amber-100">
-                                    <div className="text-center">
-                                        <div className="text-4xl font-black text-transparent bg-clip-text bg-linear-to-r from-amber-500 to-orange-600">
-                                            {((request.rating.product_rating + request.rating.service_rating) / 2).toFixed(1)}
-                                        </div>
-                                        <div className="text-xs text-slate-500 font-medium mt-1">متوسط التقييم</div>
-                                    </div>
-                                    <div className="h-12 w-px bg-amber-200"></div>
-                                    <div className="flex gap-1">
-                                        {[1, 2, 3, 4, 5].map((star) => (
-                                            <svg
-                                                key={star}
-                                                className={clsx("w-7 h-7 drop-shadow-md transition-transform hover:scale-110",
-                                                    star <= Math.round((request.rating.product_rating + request.rating.service_rating) / 2)
-                                                        ? "text-amber-400 fill-amber-400"
-                                                        : "text-gray-300 fill-gray-300"
-                                                )}
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                                            </svg>
-                                        ))}
-                                    </div>
-                                </div>
+                    {/* Customer Images Section */}
+                    {request.attachments && request.attachments.length > 0 && (
+                        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                            <div className="flex items-center gap-2 mb-4">
+                                <ImageIcon className="text-purple-600" size={20} />
+                                <h3 className="text-lg font-bold text-slate-900">
+                                    {t('request_details.customer_images')}
+                                </h3>
+                                <span className="text-sm text-slate-500">
+                                    ({request.attachments.length})
+                                </span>
                             </div>
 
-                            {/* Rating Cards Grid */}
-                            <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                {/* Product Rating Card */}
-                                <div className="group bg-white p-5 rounded-xl border-2 border-amber-100 hover:border-amber-300 shadow-sm hover:shadow-md transition-all duration-300">
-                                    <div className="flex items-start gap-3 mb-3">
-                                        <div className="p-2 bg-amber-100 rounded-lg group-hover:bg-amber-200 transition-colors">
-                                            <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                            </svg>
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="text-sm font-semibold text-slate-700 mb-1">
-                                                {t('rating.product_satisfaction')}
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="flex gap-0.5">
-                                                    {[1, 2, 3, 4, 5].map((star) => (
-                                                        <svg
-                                                            key={star}
-                                                            className={clsx("w-5 h-5 transition-all",
-                                                                star <= (request.rating.product_rating || 0)
-                                                                    ? "text-amber-400 fill-amber-400 drop-shadow-sm"
-                                                                    : "text-gray-300 fill-gray-300"
-                                                            )}
-                                                            viewBox="0 0 24 24"
-                                                        >
-                                                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                                                        </svg>
-                                                    ))}
-                                                </div>
-                                                <span className="text-lg font-bold text-slate-900">
-                                                    {request.rating.product_rating}<span className="text-sm text-slate-500">/5</span>
-                                                </span>
-                                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                {request.attachments.map((img: any, idx: number) => (
+                                    <img
+                                        key={idx}
+                                        src={getBaseUrl() + '/storage/' + img.file_path}
+                                        alt={`Customer ${idx + 1}`}
+                                        className="w-full h-48 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-90 transition-opacity"
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Technician Images Section */}
+                    {request.technician_images && request.technician_images.length > 0 && (
+                        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Camera className="text-blue-600" size={20} />
+                                <h3 className="text-lg font-bold text-slate-900">
+                                    {t('request_details.technician_images')}
+                                </h3>
+                                <span className="text-sm text-slate-500">
+                                    ({request.technician_images.length})
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                {request.technician_images.map((img: any, idx: number) => (
+                                    <div key={idx} className="relative group">
+                                        <img
+                                            src={img.image_url}
+                                            alt={`Technician ${idx + 1}`}
+                                            className="w-full h-48 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-90 transition-opacity"
+                                        />
+                                        <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white text-xs p-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <p className="font-medium">{img.technician?.name}</p>
+                                            <p className="text-slate-300">
+                                                {new Date(img.uploaded_at).toLocaleDateString(i18n.language === 'ar' ? 'ar-EG' : 'en-US')}
+                                            </p>
                                         </div>
                                     </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2">
-                                        <div
-                                            className="bg-linear-to-r from-amber-400 to-amber-500 h-2 rounded-full transition-all duration-500"
-                                            style={{ width: `${(request.rating.product_rating / 5) * 100}%` }}
-                                        ></div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+
+                    {/* Customer Rating Section - Collapsible */}
+                    {request.rating && request.status === 'completed' && (
+                        <div className="mt-8">
+                            <button
+                                onClick={() => setShowRating(!showRating)}
+                                className="w-full flex items-center justify-between p-4 bg-white rounded-xl border border-amber-200 shadow-sm hover:bg-amber-50 transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
+                                        <Star size={20} className="fill-amber-600" />
+                                    </div>
+                                    <div className="text-right">
+                                        <h3 className="font-bold text-slate-900">{t('request_details.view_rating')}</h3>
+                                        <div className="flex gap-1 mt-1">
+                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                <Star
+                                                    key={star}
+                                                    size={12}
+                                                    className={clsx(
+                                                        star <= Math.round((request.rating.product_rating + request.rating.service_rating) / 2)
+                                                            ? "text-amber-400 fill-amber-400"
+                                                            : "text-gray-300 fill-gray-300"
+                                                    )}
+                                                />
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
+                                <div className={clsx("transform transition-transform duration-200", showRating ? "rotate-180" : "")}>
+                                    <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </button>
+
+                            {showRating && (
+                                <div className="mt-4 bg-linear-to-br from-amber-50 via-orange-50/30 to-yellow-50/50 p-8 rounded-2xl border-2 border-amber-200/60 shadow-lg relative overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
+                                    {/* Decorative Background Elements */}
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-200/20 rounded-full -mr-16 -mt-16"></div>
+                                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-orange-200/20 rounded-full -ml-12 -mb-12"></div>
+
+                                    {/* Header */}
+                                    <div className="relative z-10 mb-6">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="p-2.5 bg-linear-to-br from-amber-400 to-orange-500 rounded-xl shadow-md">
+                                                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <h2 className="text-2xl font-bold text-slate-900">
+                                                    {t('request_details.customer_rating')}
+                                                </h2>
+                                                <p className="text-sm text-slate-600">{t('rating.subtitle')}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Overall Rating Summary */}
+                                        <div className="flex items-center gap-4 mt-4 p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-amber-100">
+                                            <div className="text-center">
+                                                <div className="text-4xl font-black text-transparent bg-clip-text bg-linear-to-r from-amber-500 to-orange-600">
+                                                    {((request.rating.product_rating + request.rating.service_rating) / 2).toFixed(1)}
+                                                </div>
+                                                <div className="text-xs text-slate-500 font-medium mt-1">{t('rating.average')}</div>
+                                            </div>
+                                            <div className="h-12 w-px bg-amber-200"></div>
+                                            <div className="flex gap-1">
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                    <svg
+                                                        key={star}
+                                                        className={clsx("w-7 h-7 drop-shadow-md transition-transform hover:scale-110",
+                                                            star <= Math.round((request.rating.product_rating + request.rating.service_rating) / 2)
+                                                                ? "text-amber-400 fill-amber-400"
+                                                                : "text-gray-300 fill-gray-300"
+                                                        )}
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                                    </svg>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Rating Cards Grid */}
+                                    <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                        {/* Product Rating Card */}
+                                        <div className="group bg-white p-5 rounded-xl border-2 border-amber-100 hover:border-amber-300 shadow-sm hover:shadow-md transition-all duration-300">
+                                            <div className="flex items-start gap-3 mb-3">
+                                                <div className="p-2 bg-amber-100 rounded-lg group-hover:bg-amber-200 transition-colors">
+                                                    <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                                    </svg>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="text-sm font-semibold text-slate-700 mb-1">
+                                                        {t('rating.product_satisfaction')}
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex gap-0.5">
+                                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                                <svg
+                                                                    key={star}
+                                                                    className={clsx("w-5 h-5 transition-all",
+                                                                        star <= (request.rating.product_rating || 0)
+                                                                            ? "text-amber-400 fill-amber-400 drop-shadow-sm"
+                                                                            : "text-gray-300 fill-gray-300"
+                                                                    )}
+                                                                    viewBox="0 0 24 24"
+                                                                >
+                                                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                                                </svg>
+                                                            ))}
+                                                        </div>
+                                                        <span className="text-lg font-bold text-slate-900">
+                                                            {request.rating.product_rating}<span className="text-sm text-slate-500">/5</span>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                                <div
+                                                    className="bg-linear-to-r from-amber-400 to-amber-500 h-2 rounded-full transition-all duration-500"
+                                                    style={{ width: `${(request.rating.product_rating / 5) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
 
                                 {/* Service Rating Card */}
                                 <div className="group bg-white p-5 rounded-xl border-2 border-green-100 hover:border-green-300 shadow-sm hover:shadow-md transition-all duration-300">
@@ -438,10 +560,33 @@ export default function ServiceRequestDetails() {
                                         </div>
                                     </div>
                                 )}
+
+                                {/* Rating Image */}
+                                {request.rating.image_url && (
+                                    <div className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-blue-100">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <ImageIcon size={16} className="text-blue-500" />
+                                            <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                                {t('rating.rating_image')}
+                                            </span>
+                                        </div>
+                                        <div className="relative group aspect-video rounded-lg overflow-hidden border border-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all max-w-sm">
+                                            <img
+                                                src={request.rating.image_url}
+                                                alt="Rating"
+                                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                                onClick={() => window.open(request.rating.image_url, '_blank')}
+                                            />
+                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
                 </div>
+            )}
+            </div>
 
                 {/* Sidebar (Left Side) */}
                 <div className="space-y-6">
@@ -521,6 +666,11 @@ export default function ServiceRequestDetails() {
                                 {t('request_details.no_technician')}
                             </div>
                         )}
+                    </div>
+
+                    {/* Request History Timeline */}
+                    <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 delay-200">
+                        <RequestTimeline activities={request.activities || []} />
                     </div>
                 </div>
             </div>

@@ -22,6 +22,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        \Illuminate\Database\Eloquent\Relations\Relation::morphMap([
+            'service' => \App\Models\ServiceRequest::class,
+            'installation' => \App\Models\InstallationRequest::class,
+        ]);
     }
 }

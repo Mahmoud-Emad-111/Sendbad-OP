@@ -218,7 +218,7 @@ export default function ServiceRequests() {
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-blue-900 font-medium">
-              {selectedRequests.length} {t('selected')}
+              {selectedRequests.length} {t('common.selected')}
             </span>
             <button
               onClick={() => setSelectedRequests([])}
@@ -229,7 +229,7 @@ export default function ServiceRequests() {
           </div>
           <button
             onClick={async () => {
-              if (!confirm(t(`Delete ${selectedRequests.length} selected request(s)?`))) return;
+              if (!confirm(t('common.delete_selected_confirm', { count: selectedRequests.length }))) return;
               try {
                 setBulkDeleting(true);
                 const res = await api.post('/requests/bulk-delete', { ids: selectedRequests });
@@ -247,7 +247,7 @@ export default function ServiceRequests() {
             disabled={bulkDeleting}
             className="bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-700 transition-colors disabled:opacity-50">
             <Trash2 size={16} />
-            {bulkDeleting ? t('common.deleting') + '...' : t('Delete Selected')}
+            {bulkDeleting ? t('common.deleting') + '...' : t('common.delete_selected')}
           </button>
         </div>
       )}
@@ -367,9 +367,9 @@ export default function ServiceRequests() {
                               className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                             />
                           </th>
-                          <th className="px-4 py-3 text-start text-xs font-semibold text-slate-700 uppercase tracking-wider">#{t('ID')}</th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-slate-700 uppercase tracking-wider">#{t('common.id')}</th>
                           <th className="px-4 py-3 text-start text-xs font-semibold text-slate-700 uppercase tracking-wider">{t('requests.table.customer')}</th>
-                          <th className="px-4 py-3 text-start text-xs font-semibold text-slate-700 uppercase tracking-wider">{t('requests.service_type')}</th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-slate-700 uppercase tracking-wider">{t('common.service_type')}</th>
                           <th className="px-4 py-3 text-start text-xs font-semibold text-slate-700 uppercase tracking-wider">{t('requests.table.status')}</th>
                           <th className="px-4 py-3 text-start text-xs font-semibold text-slate-700 uppercase tracking-wider">{t('requests.technician')}</th>
                           <th className="px-4 py-3 text-start text-xs font-semibold text-slate-700 uppercase tracking-wider">{t('requests.scheduled_at')}</th>

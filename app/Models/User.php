@@ -28,6 +28,7 @@ class User extends Authenticatable
         'password',
         'invoice_number',
         'quotation_template',
+        'profile_link',
     ];
 
     /**

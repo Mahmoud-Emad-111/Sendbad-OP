@@ -36,7 +36,7 @@ export default function NewCustomer() {
               navigate('/dashboard/users');
           }
       } catch (error: any) {
-          toast.error(error.response?.data?.message || 'Error creating customer');
+          toast.error(error.response?.data?.message || t('common.error'));
       } finally {
           setSubmitting(false);
       }
@@ -222,7 +222,7 @@ export default function NewCustomer() {
                           {t('manual_customer.total')}
                         </label>
                         <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">OMR</span>
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">{t('common.currency')}</span>
                           <input
                             type="number"
                             min="0"
@@ -240,7 +240,7 @@ export default function NewCustomer() {
                           {t('manual_customer.paid')}
                         </label>
                         <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">OMR</span>
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">{t('common.currency')}</span>
                           <input
                             type="number"
                             min="0"
@@ -263,7 +263,7 @@ export default function NewCustomer() {
                             : "bg-green-50 text-green-600 border-green-200"
                         )}>
                           <span>{order.remaining_amount.toFixed(3)}</span>
-                          <span className="text-[10px] opacity-70">OMR</span>
+                          <span className="text-[10px] opacity-70">{t('common.currency')}</span>
                         </div>
                       </div>
                     </div>
