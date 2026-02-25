@@ -6,8 +6,7 @@ import {
   User,
   Settings,
   Truck,
-  FileText,
-  AlertCircle
+  FileText
 } from 'lucide-react';
 
 interface Activity {
@@ -94,7 +93,7 @@ const RequestTimeline: React.FC<RequestTimelineProps> = ({ activities }) => {
         </div>
         <div className="p-6">
             <div className="relative border-r-2 border-slate-100 mr-3 space-y-8">
-                {activities.map((activity, index) => (
+                {activities.map((activity) => (
                 <div key={activity.id} className="relative flex items-start gap-4 mr-[-9px]">
                     {/* Dot */}
                     <div className={`relative z-10 shrink-0 w-8 h-8 rounded-full ${getBgColor(activity.action)} flex items-center justify-center border-2 border-white ring-1 ring-slate-100`}>

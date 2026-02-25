@@ -305,9 +305,13 @@
     "notes_placeholder": "أي تفاصيل تانية تحب تضيفها...",
     "location_required": "يجب تحديد الموقع على الخريطة لإرسال الطلب.",
     "sending": "جاري الإرسال...",
-    "submit_btn": "إرسال الطلب"
+    "submit_btn": "إرسال الطلب",
+    "map": "خريطة",
+    "location_link": "رابط الموقع",
+    "paste_google_maps_link": "الصق رابط Google Maps",
+    "invalid_link": "رابط غير صحيح",
+    "link_hint": "يدعم روابط Google Maps بصيغ مختلفة"
   },
-
   "status": {
     "pending": "قيد الانتظار",
     "assigned": "تم الإسناد",
@@ -389,7 +393,6 @@
     "fill_required": "يرجى ملء الحقول المطلوبة",
     "success": "تم إنشاء العميل بنجاح"
   },
-
   "rating": {
     "product_satisfaction": "رضا العميل عن المنتج",
     "service_satisfaction": "رضا العميل عن الخدمة",
@@ -399,8 +402,6 @@
     "average": "متوسط التقييم",
     "rating_image": "توقيع العميل"
   },
-
-
   "technician_history": {
     "title": "سجل الفني",
     "total_requests": "إجمالي الطلبات",

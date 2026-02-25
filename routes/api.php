@@ -6,9 +6,14 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
     Route::post('/validate-phone', [AuthController::class, 'validatePhone']);
+    Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
     Route::post('/activate', [AuthController::class, 'activate']);
     Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/test-otp', [AuthController::class, 'testOtp']); // Test Route
 });
+
+// Webhooks
+Route::post('/webhooks/hypersender', [\App\Http\Controllers\Api\WebhookController::class, 'handleHyperSender']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [AuthController::class, 'profile']);
@@ -40,19 +45,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/installation-requests', [\App\Http\Controllers\Api\InstallationRequestController::class, 'index']);
     Route::get('/installation-requests/{id}', [\App\Http\Controllers\Api\InstallationRequestController::class, 'show']);
     Route::delete('/installation-requests/{id}', [\App\Http\Controllers\Api\InstallationRequestController::class, 'destroy']);
-    Route::post('/installation-requests/{id}/status', [\App\Http\Controllers\Api\InstallationRequestController::class, 'updateStatus']);
+    Route::post('/installation-requests/{id}/status', [\App\Http\Controllers\Api\InstallationRequestController::class, 'updateStatus'])
+        ->middleware(\App\Http\Middleware\PreventTechnicianCompleteWithoutRating::class);
     Route::post('/installation-requests/{id}/assign', [\App\Http\Controllers\Api\InstallationRequestController::class, 'assignTechnician']);
 
     Route::get('/requests/check-eligibility', [\App\Http\Controllers\Api\ServiceRequestController::class, 'checkEligibility']);
     Route::get('/requests/{id}', [\App\Http\Controllers\Api\ServiceRequestController::class, 'show']);
-    Route::post('/requests/{id}/status', [\App\Http\Controllers\Api\ServiceRequestController::class, 'updateStatus']);
+    Route::post('/requests/{id}/status', [\App\Http\Controllers\Api\ServiceRequestController::class, 'updateStatus'])
+        ->middleware(\App\Http\Middleware\PreventTechnicianCompleteWithoutRating::class);
     Route::post('/requests/{id}/attachments', [\App\Http\Controllers\Api\ServiceRequestController::class, 'addAttachment']);
     Route::delete('/requests/{id}', [\App\Http\Controllers\Api\ServiceRequestController::class, 'destroy']);
     Route::post('/requests/{id}/rate', [\App\Http\Controllers\Api\ServiceRequestController::class, 'rate']);
 
     // Rating Endpoints (For Mobile App)
     Route::post('/requests/{id}/rating', [\App\Http\Controllers\Api\ServiceRequestController::class, 'submitRating'])->name('service_requests.rating');
-    Route::post('/installation-requests/{id}/rating', [\App\Http\Controllers\Api\ServiceRequestController::class, 'submitRating'])->name('installation_requests.rating');
+    Route::post('/installation-requests/{id}/rating', [\App\Http\Controllers\Api\InstallationRequestController::class, 'submitRating'])->name('installation_requests.rating');
 
     // Admin Reports
     Route::get('/admin/reports/performance', [\App\Http\Controllers\Api\AdminController::class, 'getPerformanceReports']);

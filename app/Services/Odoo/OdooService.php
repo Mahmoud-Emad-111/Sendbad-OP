@@ -38,7 +38,7 @@ class OdooService implements OdooIntegrationInterface
         }
 
         // Ideally cache this UID
-        $response = Http::post($this->url . '/jsonrpc', [
+        $response = Http::withoutVerifying()->post($this->url . '/jsonrpc', [
             'jsonrpc' => '2.0',
             'method' => 'call',
             'params' => [
@@ -136,7 +136,7 @@ class OdooService implements OdooIntegrationInterface
                 ];
             }
 
-            $response = Http::post($this->url . '/jsonrpc', [
+            $response = Http::withoutVerifying()->post($this->url . '/jsonrpc', [
                 'jsonrpc' => '2.0',
                 'method' => 'call',
                 'params' => [
@@ -204,7 +204,7 @@ class OdooService implements OdooIntegrationInterface
                 ];
 
                  // Execute Phone Search
-                $response = Http::post($this->url . '/jsonrpc', [
+                $response = Http::withoutVerifying()->post($this->url . '/jsonrpc', [
                     'jsonrpc' => '2.0',
                     'method' => 'call',
                     'params' => [
@@ -228,7 +228,7 @@ class OdooService implements OdooIntegrationInterface
             $nameIds = [];
             if ($name) {
                  // Execute Name Search
-                 $response = Http::post($this->url . '/jsonrpc', [
+                 $response = Http::withoutVerifying()->post($this->url . '/jsonrpc', [
                     'jsonrpc' => '2.0',
                     'method' => 'call',
                     'params' => [
@@ -271,7 +271,7 @@ class OdooService implements OdooIntegrationInterface
                 ['partner_id', 'child_of', $odooId]
             ];
 
-            $response = Http::post($this->url . '/jsonrpc', [
+            $response = Http::withoutVerifying()->post($this->url . '/jsonrpc', [
                 'jsonrpc' => '2.0',
                 'method' => 'call',
                 'params' => [
@@ -325,7 +325,7 @@ class OdooService implements OdooIntegrationInterface
         try {
             $uid = $this->getUid();
 
-            $response = Http::post($this->url . '/jsonrpc', [
+            $response = Http::withoutVerifying()->post($this->url . '/jsonrpc', [
                 'jsonrpc' => '2.0',
                 'method' => 'call',
                 'params' => [
@@ -371,7 +371,7 @@ class OdooService implements OdooIntegrationInterface
 
            // Strict: Search for task with EXACT name "The product is complete..."
            // AND it must be marked as "Ready" (Green Checkmark / Done state)
-            $response = Http::post($this->url . '/jsonrpc', [
+            $response = Http::withoutVerifying()->post($this->url . '/jsonrpc', [
                 'jsonrpc' => '2.0',
                 'method' => 'call',
                 'params' => [
@@ -417,7 +417,7 @@ class OdooService implements OdooIntegrationInterface
             $uid = $this->getUid();
 
             // 1. Search for tasks first (without potentially breaking fields)
-            $response = Http::post($this->url . '/jsonrpc', [
+            $response = Http::withoutVerifying()->post($this->url . '/jsonrpc', [
                 'jsonrpc' => '2.0',
                 'method' => 'call',
                 'params' => [
@@ -453,7 +453,7 @@ class OdooService implements OdooIntegrationInterface
             // This bypasses potential issues with search_read or permissions on mixed fields
             $poIds = array_column($tasks, 'id');
 
-            $readResponse = Http::post($this->url . '/jsonrpc', [
+            $readResponse = Http::withoutVerifying()->post($this->url . '/jsonrpc', [
                 'jsonrpc' => '2.0',
                 'method' => 'call',
                 'params' => [
@@ -502,7 +502,7 @@ class OdooService implements OdooIntegrationInterface
             // In Odoo, for Customers:
             // 'debit' = Total Receivable (Amount they owe us)
             // 'credit' = Total Payable (Amount we owe them / Advance payments)
-            $response = Http::post($this->url . '/jsonrpc', [
+            $response = Http::withoutVerifying()->post($this->url . '/jsonrpc', [
                 'jsonrpc' => '2.0',
                 'method' => 'call',
                 'params' => [
@@ -562,7 +562,7 @@ class OdooService implements OdooIntegrationInterface
                 ['payment_state', '!=', 'paid']
             ];
 
-            $response = Http::post($this->url . '/jsonrpc', [
+            $response = Http::withoutVerifying()->post($this->url . '/jsonrpc', [
                 'jsonrpc' => '2.0',
                 'method' => 'call',
                 'params' => [

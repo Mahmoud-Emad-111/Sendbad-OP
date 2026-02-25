@@ -424,7 +424,13 @@ class ServiceRequestController extends Controller
                 $technician->fcm_token,
                 'مهمة صيانة جديدة 🛠️',
                 "تم تعيين طلب صيانة جديد لك: #{$serviceRequest->id}\nالنوع: {$serviceRequest->service_type}\nتاريخ الزيارة: {$visitDate}\nتاريخ التسليم: {$endDate}",
-                ['request_id' => (string) $serviceRequest->id, 'type' => 'assignment', 'request_type' => 'service']
+                [
+                    'request_id' => (string) $serviceRequest->id,
+                    'type' => 'assignment',
+                    'request_type' => 'service',
+                    'visit_date' => $visitDate,
+                    'end_date' => $endDate
+                ]
             );
         }
 
@@ -554,6 +560,11 @@ class ServiceRequestController extends Controller
             return response()->json(['success' => false, 'message' => 'يمكنك تقييم الطلبات المكتملة فقط'], 400);
         }
 
+        // Prevent duplicate rating
+        if ($serviceRequest->rating) {
+            return response()->json(['success' => false, 'message' => 'لقد قمت بتقييم هذا الطلب مسبقاً'], 400);
+        }
+
         $serviceRequest->update([
             'rating' => $request->rating,
             'review_comment' => $request->review_comment
@@ -662,20 +673,10 @@ class ServiceRequestController extends Controller
     {
         $user = $request->user();
 
-        // Determine request type from route
-        $requestType = $request->route()->getName() === 'installation_requests.rating' ? 'installation' : 'service';
-
         // Find the request and verify ownership
-        if ($requestType === 'service') {
-            $serviceRequest = \App\Models\ServiceRequest::findOrFail($id);
-            if ($serviceRequest->user_id !== $user->id) {
-                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
-            }
-        } else {
-            $installationRequest = \App\Models\InstallationRequest::findOrFail($id);
-            if ($installationRequest->user_id !== $user->id) {
-                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
-            }
+        $serviceRequest = \App\Models\ServiceRequest::findOrFail($id);
+        if ($serviceRequest->user_id !== $user->id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
         // Handle Image Upload
@@ -686,7 +687,7 @@ class ServiceRequestController extends Controller
 
         // Check if rating exists to handle old image deletion
         $existingRating = \App\Models\Rating::where('request_id', $id)
-            ->where('request_type', $requestType)
+            ->where('request_type', 'service')
             ->first();
 
         if ($existingRating && $request->hasFile('image') && $existingRating->image_path) {
@@ -710,7 +711,7 @@ class ServiceRequestController extends Controller
         $rating = \App\Models\Rating::updateOrCreate(
             [
                 'request_id' => $id,
-                'request_type' => $requestType,
+                'request_type' => 'service',
             ],
             $data
         );

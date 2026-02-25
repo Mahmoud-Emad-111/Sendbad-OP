@@ -329,7 +329,13 @@ class InstallationRequestController extends Controller
                 $technician->fcm_token,
                 'مهمة تركيب جديدة 🛠️',
                 "تم تعيين طلب تركيب جديد لك: #{$installationRequest->id}\nالعنوان: {$installationRequest->address}\nتاريخ الزيارة: {$visitDate}\nتاريخ التسليم: {$endDate}",
-                ['request_id' => (string) $installationRequest->id, 'type' => 'assignment', 'request_type' => 'installation']
+                [
+                    'request_id' => (string) $installationRequest->id,
+                    'type' => 'assignment',
+                    'request_type' => 'installation',
+                    'visit_date' => $visitDate,
+                    'end_date' => $endDate
+                ]
             );
         }
 
@@ -424,5 +430,64 @@ class InstallationRequestController extends Controller
                 'message' => 'Error deleting requests: ' . $e->getMessage()
             ], 500);
         }
+    }
+    /**
+     * Submit/Update Rating for Installation Request
+     */
+    public function submitRating(\App\Http\Requests\RatingRequest $request, $id)
+    {
+        $user = $request->user();
+        $installationRequest = InstallationRequest::findOrFail($id);
+
+        if ($installationRequest->user_id !== $user->id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        // Handle Image Upload
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('ratings', 'public');
+        }
+
+        // Check if rating exists
+        $existingRating = \App\Models\Rating::where('request_id', $id)
+            ->where('request_type', 'installation')
+            ->first();
+
+        // Prevent duplicate rating
+        if ($existingRating) {
+            // If it's the SAME user trying to rate again -> Error
+            // If we wanted to allow *updating* the rating, we would skip this check.
+            // But the requirement is "User cannot rate again".
+            return response()->json(['success' => false, 'message' => 'لقد قمت بتقييم هذا الطلب مسبقاً'], 400);
+        }
+
+        // Prepare data for updateOrCreate
+        $data = [
+            'user_id' => $user->id,
+            'product_rating' => $request->product_rating,
+            'service_rating' => $request->service_rating,
+            'how_found_us' => $request->how_found_us,
+            'customer_notes' => $request->customer_notes,
+        ];
+
+        if ($imagePath) {
+            $data['image_path'] = $imagePath;
+        }
+
+        // Create or update rating
+        $rating = \App\Models\Rating::updateOrCreate(
+            [
+                'request_id' => $id,
+                'request_type' => 'installation',
+            ],
+            $data
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Rating submitted successfully',
+            'data' => $rating
+        ]);
     }
 }

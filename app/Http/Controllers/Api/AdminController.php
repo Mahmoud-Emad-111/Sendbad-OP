@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Services\Odoo\OdooService;
 
 class AdminController extends Controller
@@ -36,6 +37,30 @@ class AdminController extends Controller
         }
 
         $users = $query->latest()->get();
+
+        // Append dynamic stats for technicians
+        if ($request->role === 'technician') {
+            $users->each(function ($user) {
+                // Total requests assigned (service + installation)
+                $serviceCount = \App\Models\ServiceRequest::where('technician_id', $user->id)->count();
+                $installationCount = \App\Models\InstallationRequest::where('technician_id', $user->id)->count();
+                $user->total_requests = $serviceCount + $installationCount;
+
+                // Average rating from Rating model (installation) + service request rating column
+                $installationAvg = \App\Models\Rating::where('request_type', 'installation')
+                    ->whereIn('request_id',
+                        \App\Models\InstallationRequest::where('technician_id', $user->id)->pluck('id')
+                    )
+                    ->avg(DB::raw('(product_rating + service_rating) / 2'));
+
+                $serviceAvg = \App\Models\ServiceRequest::where('technician_id', $user->id)
+                    ->whereNotNull('rating')
+                    ->avg('rating');
+
+                $ratings = array_filter([$installationAvg, $serviceAvg], fn($v) => $v !== null);
+                $user->avg_rating = count($ratings) > 0 ? round(array_sum($ratings) / count($ratings), 1) : null;
+            });
+        }
 
         return response()->json([
             'success' => true,
@@ -337,13 +362,16 @@ class AdminController extends Controller
             'status' => 'pending',
         ]);
 
-        // Handle image attachments
+        // Handle image attachments (store via polymorphic relation)
         if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $image) {
+            $images = $request->file('images');
+            if (!is_array($images)) $images = [$images];
+
+            foreach ($images as $image) {
                 $path = $image->store('request_attachments', 'public');
-                \App\Models\RequestAttachment::create([
-                    'request_id' => $serviceRequest->id,
-                    'file_path' => $path
+                $serviceRequest->attachments()->create([
+                    'file_path' => $path,
+                    'file_type' => 'image'
                 ]);
             }
         }
@@ -415,12 +443,16 @@ class AdminController extends Controller
 
         // Handle image attachments
         if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $image) {
+            $images = $request->file('images');
+            if (!is_array($images)) {
+                $images = [$images];
+            }
+
+            foreach ($images as $image) {
                 $path = $image->store('installation_attachments', 'public');
-                \App\Models\RequestAttachment::create([
-                    'attachable_id' => $installationRequest->id,
-                    'attachable_type' => \App\Models\InstallationRequest::class,
-                    'file_path' => $path
+                $installationRequest->attachments()->create([
+                    'file_path' => $path,
+                    'file_type' => 'image'
                 ]);
             }
         }

@@ -3,10 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
-  Map as MapIcon,
   LogOut,
   Settings,
-  Package,
   TrendingUp,
   ClipboardList,
   ChevronLeft,

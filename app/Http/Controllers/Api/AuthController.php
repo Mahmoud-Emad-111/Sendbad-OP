@@ -4,16 +4,35 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\Auth\AuthService;
+use App\Services\WhatsApp\HyperSenderService;
 use Illuminate\Http\Request;
 use Exception;
 
 class AuthController extends Controller
 {
     protected AuthService $authService;
+    protected HyperSenderService $hyperSender;
 
-    public function __construct(AuthService $authService)
+    public function __construct(AuthService $authService, HyperSenderService $hyperSender)
     {
         $this->authService = $authService;
+        $this->hyperSender = $hyperSender;
+    }
+
+    /**
+     * Test OTP Sending (Dev Only)
+     * POST /api/auth/test-otp
+     */
+    public function testOtp(Request $request)
+    {
+        $request->validate(['phone' => 'required|string']);
+
+        $response = $this->hyperSender->sendOtp($request->phone);
+
+        return response()->json([
+            'success' => !!$response,
+            'response' => $response
+        ]);
     }
 
     /**
@@ -29,20 +48,25 @@ class AuthController extends Controller
         try {
             $customer = $this->authService->validateOdooUser($request->phone);
 
+            // Send OTP via WhatsApp
+            $otpResponse = $this->hyperSender->sendOtp($request->phone);
+
             // Cache data for activation step (expires in 10 minutes)
             \Illuminate\Support\Facades\Cache::put('auth_otp_' . $request->phone, [
                 'name' => $customer['name'],
                 'odoo_id' => $customer['id'],
-                'phone' => $customer['phone']
+                'phone' => $customer['phone'],
+                'otp_sent' => (bool)$otpResponse, // Indicates if OTP was attempted to be sent
+                'verified' => false // Will be set to true after successful OTP verification
             ], 600);
 
             return response()->json([
                 'success' => true,
-                'message' => 'User found in Odoo.',
+                'message' => 'تم إرسال رمز التحقق عبر الواتساب',
                 'data' => [
                     'name' => $customer['name'],
-                    'phone' => $customer['phone']
-                    // Removed odoo_id return as it's now internal
+                    'phone' => $customer['phone'],
+                    'otp_sent' => (bool)$otpResponse
                 ]
             ]);
 
@@ -52,6 +76,46 @@ class AuthController extends Controller
                 'message' => $e->getMessage()
             ], 422);
         }
+    }
+
+    /**
+     * Step 1.5: Verify OTP
+     * POST /api/auth/verify-otp
+     */
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'phone' => 'required|string',
+            'code' => 'required|string'
+        ]);
+
+        $isValid = $this->hyperSender->validateOtp($request->phone, $request->code);
+
+        if (!$isValid) {
+            return response()->json([
+                'success' => false,
+                'message' => 'رمز التحقق غير صحيح أو منتهي الصلاحية'
+            ], 400);
+        }
+
+        // Mark as verified in cache
+        $cacheKey = 'auth_otp_' . $request->phone;
+        $cachedData = \Illuminate\Support\Facades\Cache::get($cacheKey);
+
+        if ($cachedData) {
+            $cachedData['verified'] = true;
+            \Illuminate\Support\Facades\Cache::put($cacheKey, $cachedData, 600);
+        } else {
+             return response()->json([
+                'success' => false,
+                'message' => 'انتهت صلاحية الجلسة أو رقم الهاتف غير صحيح. يرجى إعادة التحقق.'
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم التحقق بنجاح'
+        ]);
     }
 
     /**

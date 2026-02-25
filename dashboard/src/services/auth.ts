@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// const BASE_API_URL = import.meta.env.VITE_API_BASE_URL || 'https://back.sindbad.om/public/api';
-const BASE_API_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
+const BASE_API_URL = import.meta.env.VITE_API_BASE_URL || 'https://back.sindbad.om/public/api';
+// const BASE_API_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
 const api = axios.create({
     baseURL: BASE_API_URL,
@@ -16,6 +16,20 @@ api.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+// Ensure FormData requests don't keep the default JSON content-type so browser can set multipart boundary
+api.interceptors.request.use((config) => {
+    try {
+        if (config && (config as any).data && (config as any).data instanceof FormData) {
+            if (config.headers) {
+                delete (config.headers as any)['Content-Type'];
+                delete (config.headers as any)['content-type'];
+            }
+        }
+    } catch (e) {
+        // ignore
     }
     return config;
 });
@@ -82,7 +96,7 @@ export const adminService = {
 };
 
 // Export API_URL for components that need to construct storage URLs
-export const API_URL = import.meta.env.VITE_API_BASE_URL || 'https://back.sindbad.om/public/api';
-export const getBaseUrl = () => API_URL.replace('/api', '');
+export const API_URL = BASE_API_URL;
+export const getBaseUrl = () => API_URL.replace('/api', '').replace(/\/$/, '');
 
 export default api;

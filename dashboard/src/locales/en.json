@@ -306,9 +306,13 @@
     "notes_placeholder": "Any other details you want to add...",
     "location_required": "Location must be selected on the map to submit.",
     "sending": "Sending...",
-    "submit_btn": "Submit Request"
+    "submit_btn": "Submit Request",
+    "map": "Map",
+    "location_link": "Location Link",
+    "paste_google_maps_link": "Paste Google Maps Link",
+    "invalid_link": "Invalid link",
+    "link_hint": "Supports various Google Maps link formats"
   },
-
   "status": {
     "pending": "Pending",
     "assigned": "Assigned",
@@ -390,7 +394,6 @@
     "fill_required": "Please fill required fields",
     "success": "Customer created successfully"
   },
-
   "rating": {
     "service_satisfaction": "Service Quality",
     "how_found_us": "How did they find us",
@@ -399,8 +402,6 @@
     "average": "Average Rating",
     "rating_image": "Customer Signature"
   },
-
-
   "technician_history": {
     "title": "Technician History",
     "total_requests": "Total Requests",

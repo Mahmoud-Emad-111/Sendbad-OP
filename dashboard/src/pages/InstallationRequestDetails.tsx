@@ -1,25 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api, { getBaseUrl } from '../services/auth';
-import { Calendar, User, Settings, AlertCircle, CheckCircle, Clock, MapPin, ArrowRight, Package, X, Image as ImageIcon, Camera } from 'lucide-react';
-import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+import { Calendar, User, Settings, AlertCircle, CheckCircle, Clock, MapPin, ArrowRight, Package, X, Image as ImageIcon, Camera, Star } from 'lucide-react';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
 import clsx from 'clsx';
 import LoadingSpinner from '../components/LoadingSpinner';
 import RequestTimeline from '../components/RequestTimeline';
 import { useTranslation } from 'react-i18next';
 
-const containerStyle = {
-    width: '100%',
-    height: '400px',
-    borderRadius: '0.75rem'
-};
-
-const mapOptions = {
-    zoomControl: true,
-    streetViewControl: false,
-    mapTypeControl: false,
-    fullscreenControl: true,
-};
+// Fix Leaflet marker icon issue
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 export default function InstallationRequestDetails() {
     const { t, i18n } = useTranslation();
@@ -43,56 +40,15 @@ export default function InstallationRequestDetails() {
 
     // Readiness Details State
     const [readinessModal, setReadinessModal] = useState(false);
-    const [editReadiness, setEditReadiness] = useState<{is_site_ready: boolean, details: string[]}>({
+    const [editReadiness, setEditReadiness] = useState<{ is_site_ready: boolean, details: string[] }>({
         is_site_ready: false,
         details: []
     });
     const productStatusOptions = ['quartz', 'appliances', 'order'];
     const orderStatusDetails = ['in_stock', 'shipping', 'production', 'on_site'];
 
-     const handleUpdateReadiness = async () => {
-        try {
-            setUpdating(true);
-            const res = await api.put(`/installation-requests/${id}/readiness`, {
-                is_site_ready: editReadiness.is_site_ready,
-                readiness_details: editReadiness.details
-            });
-            if (res.data.success) {
-                setRequest((prev: any) => ({
-                    ...prev,
-                    is_site_ready: editReadiness.is_site_ready,
-                    readiness_details: editReadiness.details
-                }));
-                setReadinessModal(false);
-            }
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setUpdating(false);
-        }
-    };
-
-    const openReadinessModal = () => {
-        setEditReadiness({
-            is_site_ready: request.is_site_ready,
-            details: request.readiness_details || []
-        });
-        setReadinessModal(true);
-    };
-
-    const toggleReadinessDetail = (item: string) => {
-        setEditReadiness(prev => {
-            const details = prev.details.includes(item)
-                ? prev.details.filter(i => i !== item)
-                : [...prev.details, item];
-            return { ...prev, details };
-        });
-    };
-
-    const { isLoaded } = useJsApiLoader({
-        id: 'google-map-script',
-        googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
-    });
+    // Admin Rating Modal State
+    const [rateModal, setRateModal] = useState(false);
 
     useEffect(() => {
         loadRequest();
@@ -222,11 +178,58 @@ export default function InstallationRequestDetails() {
         }
     };
 
+    const handleUpdateReadiness = async () => {
+        try {
+            setUpdating(true);
+            const res = await api.put(`/installation-requests/${id}/readiness`, {
+                is_site_ready: editReadiness.is_site_ready,
+                readiness_details: editReadiness.details
+            });
+            if (res.data.success) {
+                setRequest((prev: any) => ({
+                    ...prev,
+                    is_site_ready: editReadiness.is_site_ready,
+                    readiness_details: editReadiness.details
+                }));
+                setReadinessModal(false);
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const openReadinessModal = () => {
+        setEditReadiness({
+            is_site_ready: request.is_site_ready,
+            details: request.readiness_details || []
+        });
+        setReadinessModal(true);
+    };
+
+    const toggleReadinessDetail = (item: string) => {
+        setEditReadiness(prev => {
+            const details = prev.details.includes(item)
+                ? prev.details.filter(i => i !== item)
+                : [...prev.details, item];
+            return { ...prev, details };
+        });
+    };
+
+    const tileUrl = i18n.language === 'ar'
+        ? "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+
+    const attribution = i18n.language === 'ar'
+        ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
     return (
         <div className="space-y-6 max-w-7xl mx-auto pb-10">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                 <div className="flex items-center gap-4">
+            <div className="relative z-20 flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate(-1)}
                         className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
@@ -235,7 +238,7 @@ export default function InstallationRequestDetails() {
                     </button>
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                            {t('request_details.installation_title', {id: request.id})}
+                            {t('request_details.installation_title', { id: request.id })}
                             <StatusBadge status={request.status} />
                         </h1>
                         <div className="text-slate-500 flex items-center gap-2 text-sm mt-1">
@@ -260,6 +263,15 @@ export default function InstallationRequestDetails() {
                         <Settings size={18} />
                         {t('request_details.change_status')}
                     </button>
+                    {request.rating && (
+                        <button
+                            onClick={() => setRateModal(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors shadow-sm"
+                        >
+                            <Star size={18} />
+                            {t('request_details.view_rating') || 'View Rating'}
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -308,28 +320,28 @@ export default function InstallationRequestDetails() {
                                         {/* Filter and show Product Status */}
                                         {request.readiness_details.some((r: string) => productStatusOptions.includes(r)) && (
                                             <div>
-                                                 <div className="text-xs font-semibold text-slate-700 mb-1">{t('new_request.product_status_title')}</div>
-                                                 <div className="flex flex-wrap gap-2">
+                                                <div className="text-xs font-semibold text-slate-700 mb-1">{t('new_request.product_status_title')}</div>
+                                                <div className="flex flex-wrap gap-2">
                                                     {request.readiness_details.filter((r: string) => productStatusOptions.includes(r)).map((item: string, idx: number) => (
                                                         <span key={`prod-${idx}`} className="bg-purple-50 text-purple-700 px-2 py-1 rounded text-xs border border-purple-100">
                                                             {t(`new_request.readiness_options.${item}`)}
                                                         </span>
                                                     ))}
-                                                 </div>
+                                                </div>
                                             </div>
                                         )}
 
                                         {/* Filter and show Order Status */}
                                         {request.readiness_details.some((r: string) => orderStatusDetails.includes(r)) && (
                                             <div>
-                                                 <div className="text-xs font-semibold text-slate-700 mb-1">{t('new_request.order_status_title')}</div>
-                                                 <div className="flex flex-wrap gap-2">
+                                                <div className="text-xs font-semibold text-slate-700 mb-1">{t('new_request.order_status_title')}</div>
+                                                <div className="flex flex-wrap gap-2">
                                                     {request.readiness_details.filter((r: string) => orderStatusDetails.includes(r)).map((item: string, idx: number) => (
                                                         <span key={`ord-${idx}`} className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs border border-blue-100">
                                                             {t(`new_request.readiness_options.${item}`)}
                                                         </span>
                                                     ))}
-                                                 </div>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -353,22 +365,20 @@ export default function InstallationRequestDetails() {
                             {t('request_details.client_location')}
                         </h2>
                         {request.latitude && request.longitude ? (
-                             isLoaded ? (
-                                <div className="rounded-xl overflow-hidden border border-slate-100">
-                                    <GoogleMap
-                                        mapContainerStyle={containerStyle}
-                                        center={mapCenter}
-                                        zoom={14}
-                                        options={mapOptions}
-                                    >
-                                        <Marker position={mapCenter} />
-                                    </GoogleMap>
-                                </div>
-                             ) : (
-                                 <div className="h-[400px] bg-slate-100 rounded-xl flex items-center justify-center text-slate-500">
-                                     {t('common.loading_map')}
-                                 </div>
-                             )
+                            <div className="rounded-xl overflow-hidden border border-slate-100 h-[400px] relative z-0">
+
+                                <MapContainer
+                                    center={mapCenter}
+                                    zoom={14}
+                                    style={{ height: '100%', width: '100%' }}
+                                >
+                                    <TileLayer
+                                        url={tileUrl}
+                                        attribution={attribution}
+                                    />
+                                    <Marker position={mapCenter} />
+                                </MapContainer>
+                            </div>
                         ) : (
                             <div className="h-[200px] bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 border border-dashed border-slate-200">
                                 {t('request_details.no_location')}
@@ -380,36 +390,7 @@ export default function InstallationRequestDetails() {
                         </div>
                     </div>
 
-                    {/* Images Gallery */}
-                    {/* Customer Signature (Images) */}
-                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
-                        <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                            <ImageIcon size={20} className="text-purple-600" />
-                            {t('request_details.customer_signature')}
-                            {request.attachments && (
-                                <span className="text-sm font-normal text-slate-500">({request.attachments.length})</span>
-                            )}
-                        </h2>
-                        {request.attachments && request.attachments.length > 0 ? (
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {request.attachments.map((img: any) => (
-                                    <div key={img.id} className="relative group aspect-square rounded-lg overflow-hidden border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-all">
-                                        <img
-                                            src={`${getBaseUrl()}/storage/${img.file_path}`}
-                                            alt="Customer Signature"
-                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                                            onClick={() => window.open(`${getBaseUrl()}/storage/${img.file_path}`, '_blank')}
-                                        />
-                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-center py-8 text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-200">
-                                {t('request_details.no_attachments')}
-                            </div>
-                        )}
-                    </div>
+                    {/* Customer Signature section removed as requested */}
 
 
                     {/* Customer Rating Section - Enhanced Design */}
@@ -453,204 +434,204 @@ export default function InstallationRequestDetails() {
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-amber-200/20 rounded-full -mr-16 -mt-16"></div>
                                     <div className="absolute bottom-0 left-0 w-24 h-24 bg-orange-200/20 rounded-full -ml-12 -mb-12"></div>
 
-                            {/* Header */}
-                            <div className="relative z-10 mb-6">
-                                <div className="flex items-center gap-3 mb-2">
-                                    <div className="p-2.5 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl shadow-md">
-                                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <h2 className="text-2xl font-bold text-slate-900">
-                                            {t('request_details.customer_rating')}
-                                        </h2>
-                                        <p className="text-sm text-slate-600">{t('rating.subtitle')}</p>
-                                    </div>
-                                </div>
-
-                                {/* Overall Rating Summary */}
-                                <div className="flex items-center gap-4 mt-4 p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-amber-100">
-                                    <div className="text-center">
-                                        <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600">
-                                            {((request.rating.product_rating + request.rating.service_rating) / 2).toFixed(1)}
-                                        </div>
-                                        <div className="text-xs text-slate-500 font-medium mt-1">{t('rating.average')}</div>
-                                    </div>
-                                    <div className="h-12 w-px bg-amber-200"></div>
-                                    <div className="flex gap-1">
-                                        {[1, 2, 3, 4, 5].map((star) => (
-                                            <svg
-                                                key={star}
-                                                className={clsx("w-7 h-7 drop-shadow-md transition-transform hover:scale-110",
-                                                    star <= Math.round((request.rating.product_rating + request.rating.service_rating) / 2)
-                                                        ? "text-amber-400 fill-amber-400"
-                                                        : "text-gray-300 fill-gray-300"
-                                                )}
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                                            </svg>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Rating Cards Grid */}
-                            <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                {/* Product Rating Card */}
-                                <div className="group bg-white p-5 rounded-xl border-2 border-amber-100 hover:border-amber-300 shadow-sm hover:shadow-md transition-all duration-300">
-                                    <div className="flex items-start gap-3 mb-3">
-                                        <div className="p-2 bg-amber-100 rounded-lg group-hover:bg-amber-200 transition-colors">
-                                            <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                            </svg>
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="text-sm font-semibold text-slate-700 mb-1">
-                                                {t('rating.product_satisfaction')}
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="flex gap-0.5">
-                                                    {[1, 2, 3, 4, 5].map((star) => (
-                                                        <svg
-                                                            key={star}
-                                                            className={clsx("w-5 h-5 transition-all",
-                                                                star <= (request.rating.product_rating || 0)
-                                                                    ? "text-amber-400 fill-amber-400 drop-shadow-sm"
-                                                                    : "text-gray-300 fill-gray-300"
-                                                            )}
-                                                            viewBox="0 0 24 24"
-                                                        >
-                                                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                                                        </svg>
-                                                    ))}
-                                                </div>
-                                                <span className="text-lg font-bold text-slate-900">
-                                                    {request.rating.product_rating}<span className="text-sm text-slate-500">/5</span>
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2">
-                                        <div
-                                            className="bg-gradient-to-r from-amber-400 to-amber-500 h-2 rounded-full transition-all duration-500"
-                                            style={{ width: `${(request.rating.product_rating / 5) * 100}%` }}
-                                        ></div>
-                                    </div>
-                                </div>
-
-                                {/* Service Rating Card */}
-                                <div className="group bg-white p-5 rounded-xl border-2 border-green-100 hover:border-green-300 shadow-sm hover:shadow-md transition-all duration-300">
-                                    <div className="flex items-start gap-3 mb-3">
-                                        <div className="p-2 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
-                                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="text-sm font-semibold text-slate-700 mb-1">
-                                                {t('rating.service_satisfaction')}
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="flex gap-0.5">
-                                                    {[1, 2, 3, 4, 5].map((star) => (
-                                                        <svg
-                                                            key={star}
-                                                            className={clsx("w-5 h-5 transition-all",
-                                                                star <= (request.rating.service_rating || 0)
-                                                                    ? "text-green-500 fill-green-500 drop-shadow-sm"
-                                                                    : "text-gray-300 fill-gray-300"
-                                                            )}
-                                                            viewBox="0 0 24 24"
-                                                        >
-                                                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                                                        </svg>
-                                                    ))}
-                                                </div>
-                                                <span className="text-lg font-bold text-slate-900">
-                                                    {request.rating.service_rating}<span className="text-sm text-slate-500">/5</span>
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2">
-                                        <div
-                                            className="bg-gradient-to-r from-green-400 to-green-500 h-2 rounded-full transition-all duration-500"
-                                            style={{ width: `${(request.rating.service_rating / 5) * 100}%` }}
-                                        ></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Additional Info */}
-                            <div className="relative z-10 space-y-3">
-                                {/* How Found Us */}
-                                {request.rating.how_found_us && (
-                                    <div className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-blue-100">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                            </svg>
-                                            <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                                {t('rating.how_found_us')}
-                                            </span>
-                                        </div>
-                                        <div className="text-sm font-medium text-slate-900 bg-blue-50 px-3 py-1.5 rounded-lg inline-block">
-                                            {request.rating.how_found_us}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Customer Feedback */}
-                                {request.rating.customer_notes && (
-                                    <div className="bg-white/80 backdrop-blur-sm p-5 rounded-xl border border-purple-100">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                                            </svg>
-                                            <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                                {t('rating.customer_feedback')}
-                                            </span>
-                                        </div>
-                                        <div className="relative">
-                                            <div className="text-slate-700 leading-relaxed bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-lg border-l-4 border-purple-400">
-                                                <svg className="w-6 h-6 text-purple-200 absolute top-2 left-2" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/>
+                                    {/* Header */}
+                                    <div className="relative z-10 mb-6">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="p-2.5 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl shadow-md">
+                                                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                                                 </svg>
-                                                <p className="relative z-10 italic pl-8">
-                                                    "{request.rating.customer_notes}"
-                                                </p>
+                                            </div>
+                                            <div>
+                                                <h2 className="text-2xl font-bold text-slate-900">
+                                                    {t('request_details.customer_rating')}
+                                                </h2>
+                                                <p className="text-sm text-slate-600">{t('rating.subtitle')}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Overall Rating Summary */}
+                                        <div className="flex items-center gap-4 mt-4 p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-amber-100">
+                                            <div className="text-center">
+                                                <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600">
+                                                    {((request.rating.product_rating + request.rating.service_rating) / 2).toFixed(1)}
+                                                </div>
+                                                <div className="text-xs text-slate-500 font-medium mt-1">{t('rating.average')}</div>
+                                            </div>
+                                            <div className="h-12 w-px bg-amber-200"></div>
+                                            <div className="flex gap-1">
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                    <svg
+                                                        key={star}
+                                                        className={clsx("w-7 h-7 drop-shadow-md transition-transform hover:scale-110",
+                                                            star <= Math.round((request.rating.product_rating + request.rating.service_rating) / 2)
+                                                                ? "text-amber-400 fill-amber-400"
+                                                                : "text-gray-300 fill-gray-300"
+                                                        )}
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                                    </svg>
+                                                ))}
                                             </div>
                                         </div>
                                     </div>
-                                )}
 
-                                {/* Rating Image */}
-                                {request.rating.image_url && (
-                                    <div className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-blue-100">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <ImageIcon size={16} className="text-blue-500" />
-                                            <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                                {t('rating.rating_image')}
-                                            </span>
+                                    {/* Rating Cards Grid */}
+                                    <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                        {/* Product Rating Card */}
+                                        <div className="group bg-white p-5 rounded-xl border-2 border-amber-100 hover:border-amber-300 shadow-sm hover:shadow-md transition-all duration-300">
+                                            <div className="flex items-start gap-3 mb-3">
+                                                <div className="p-2 bg-amber-100 rounded-lg group-hover:bg-amber-200 transition-colors">
+                                                    <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                                    </svg>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="text-sm font-semibold text-slate-700 mb-1">
+                                                        {t('rating.product_satisfaction')}
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex gap-0.5">
+                                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                                <svg
+                                                                    key={star}
+                                                                    className={clsx("w-5 h-5 transition-all",
+                                                                        star <= (request.rating.product_rating || 0)
+                                                                            ? "text-amber-400 fill-amber-400 drop-shadow-sm"
+                                                                            : "text-gray-300 fill-gray-300"
+                                                                    )}
+                                                                    viewBox="0 0 24 24"
+                                                                >
+                                                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                                                </svg>
+                                                            ))}
+                                                        </div>
+                                                        <span className="text-lg font-bold text-slate-900">
+                                                            {request.rating.product_rating}<span className="text-sm text-slate-500">/5</span>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                                <div
+                                                    className="bg-gradient-to-r from-amber-400 to-amber-500 h-2 rounded-full transition-all duration-500"
+                                                    style={{ width: `${(request.rating.product_rating / 5) * 100}%` }}
+                                                ></div>
+                                            </div>
                                         </div>
-                                        <div className="relative group aspect-video rounded-lg overflow-hidden border border-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all max-w-sm">
-                                            <img
-                                                src={request.rating.image_url}
-                                                alt="Rating"
-                                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                                onClick={() => window.open(request.rating.image_url, '_blank')}
-                                            />
-                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+
+                                        {/* Service Rating Card */}
+                                        <div className="group bg-white p-5 rounded-xl border-2 border-green-100 hover:border-green-300 shadow-sm hover:shadow-md transition-all duration-300">
+                                            <div className="flex items-start gap-3 mb-3">
+                                                <div className="p-2 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
+                                                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="text-sm font-semibold text-slate-700 mb-1">
+                                                        {t('rating.service_satisfaction')}
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex gap-0.5">
+                                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                                <svg
+                                                                    key={star}
+                                                                    className={clsx("w-5 h-5 transition-all",
+                                                                        star <= (request.rating.service_rating || 0)
+                                                                            ? "text-green-500 fill-green-500 drop-shadow-sm"
+                                                                            : "text-gray-300 fill-gray-300"
+                                                                    )}
+                                                                    viewBox="0 0 24 24"
+                                                                >
+                                                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                                                </svg>
+                                                            ))}
+                                                        </div>
+                                                        <span className="text-lg font-bold text-slate-900">
+                                                            {request.rating.service_rating}<span className="text-sm text-slate-500">/5</span>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                                <div
+                                                    className="bg-gradient-to-r from-green-400 to-green-500 h-2 rounded-full transition-all duration-500"
+                                                    style={{ width: `${(request.rating.service_rating / 5) * 100}%` }}
+                                                ></div>
+                                            </div>
                                         </div>
                                     </div>
-                                )}
-                            </div>
-                            </div>
-                        )}
-                    </div>
-                )}
+
+                                    {/* Additional Info */}
+                                    <div className="relative z-10 space-y-3">
+                                        {/* How Found Us */}
+                                        {request.rating.how_found_us && (
+                                            <div className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-blue-100">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                    </svg>
+                                                    <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                                        {t('rating.how_found_us')}
+                                                    </span>
+                                                </div>
+                                                <div className="text-sm font-medium text-slate-900 bg-blue-50 px-3 py-1.5 rounded-lg inline-block">
+                                                    {request.rating.how_found_us}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Customer Feedback */}
+                                        {request.rating.customer_notes && (
+                                            <div className="bg-white/80 backdrop-blur-sm p-5 rounded-xl border border-purple-100">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                                                    </svg>
+                                                    <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                                        {t('rating.customer_feedback')}
+                                                    </span>
+                                                </div>
+                                                <div className="relative">
+                                                    <div className="text-slate-700 leading-relaxed bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-lg border-l-4 border-purple-400">
+                                                        <svg className="w-6 h-6 text-purple-200 absolute top-2 left-2" fill="currentColor" viewBox="0 0 24 24">
+                                                            <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
+                                                        </svg>
+                                                        <p className="relative z-10 italic pl-8">
+                                                            "{request.rating.customer_notes}"
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Rating Image */}
+                                        {request.rating.image_url && (
+                                            <div className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-blue-100">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <ImageIcon size={16} className="text-blue-500" />
+                                                    <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                                        {t('rating.rating_image')}
+                                                    </span>
+                                                </div>
+                                                <div className="relative group aspect-video rounded-lg overflow-hidden border border-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all max-w-sm">
+                                                    <img
+                                                        src={request.rating.image_url}
+                                                        alt="Rating"
+                                                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                                        onClick={() => window.open(request.rating.image_url, '_blank')}
+                                                    />
+                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Sidebar (Left Side) */}
@@ -686,7 +667,7 @@ export default function InstallationRequestDetails() {
                                 <div>
                                     <div className="text-xs text-slate-500">{t('common.time')}</div>
                                     <div className="font-medium text-slate-900" dir="ltr">
-                                        {new Date(request.scheduled_at).toLocaleTimeString(i18n.language, {hour: '2-digit', minute:'2-digit'})}
+                                        {new Date(request.scheduled_at).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })}
                                     </div>
                                 </div>
                             </div>
@@ -806,9 +787,10 @@ export default function InstallationRequestDetails() {
                 </div>
             )}
 
-             {/* Readiness Edit Modal */}
+            {/* Readiness Edit Modal */}
             {readinessModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm">
+
                     <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-xl font-bold">{t('request_details.edit_readiness')}</h2>
@@ -901,9 +883,10 @@ export default function InstallationRequestDetails() {
                 </div>
             )}
 
-             {/* Status Update Modal */}
+            {/* Status Update Modal */}
             {statusModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm">
+
                     <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
                         <h2 className="text-xl font-bold mb-4">{t('request_details.update_status_modal')}</h2>
                         <div className="space-y-4">
@@ -959,7 +942,8 @@ export default function InstallationRequestDetails() {
 
             {/* Assign Technician Modal */}
             {assignModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm">
+
                     <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-xl font-bold">{t('requests.assign_technician')}</h2>
@@ -1032,6 +1016,139 @@ export default function InstallationRequestDetails() {
                                     {updating ? t('common.saving') : t('common.confirm')}
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Rating Modal (Read-Only) - Compact Version */}
+            {rateModal && request.rating && (
+                <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+                    <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in duration-200 my-8 overflow-hidden">
+                        <div className="relative bg-gradient-to-br from-amber-50 via-orange-50/30 to-yellow-50/50 p-5 md:p-6">
+
+                            {/* Close Button */}
+                            <button
+                                onClick={() => setRateModal(false)}
+                                className="absolute top-3 right-3 p-1.5 bg-white/80 hover:bg-white rounded-full text-slate-400 hover:text-slate-600 transition-colors z-20 shadow-sm"
+                            >
+                                <X size={18} />
+                            </button>
+
+                            {/* Decorative Background Elements */}
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-amber-200/20 rounded-full -mr-12 -mt-12 pointer-events-none"></div>
+                            <div className="absolute bottom-0 left-0 w-16 h-16 bg-orange-200/20 rounded-full -ml-8 -mb-8 pointer-events-none"></div>
+
+                            {/* Header */}
+                            <div className="relative z-10 mb-5 text-center">
+                                <div className="inline-flex items-center justify-center p-2.5 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl shadow-md mb-3">
+                                    <Star className="w-6 h-6 text-white fill-white" />
+                                </div>
+                                <h2 className="text-xl font-bold text-slate-900">
+                                    {t('request_details.customer_rating') || 'Customer Rating'}
+                                </h2>
+                                <p className="text-xs text-slate-600 mt-0.5">{t('rating.subtitle') || 'Feedback from the customer'}</p>
+                            </div>
+
+                            {/* Overall Rating Summary */}
+                            <div className="relative z-10 flex flex-col items-center justify-center mb-6">
+                                <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600 mb-1">
+                                    {((request.rating.product_rating + request.rating.service_rating) / 2).toFixed(1)}
+                                </div>
+                                <div className="flex gap-0.5 mb-1">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <Star
+                                            key={star}
+                                            size={20}
+                                            className={clsx(
+                                                star <= Math.round((request.rating.product_rating + request.rating.service_rating) / 2)
+                                                    ? "text-amber-400 fill-amber-400 drop-shadow-sm"
+                                                    : "text-gray-300 fill-gray-300"
+                                            )}
+                                        />
+                                    ))}
+                                </div>
+                                <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{t('rating.average') || 'Average Rating'}</div>
+                            </div>
+
+                            <div className="space-y-4 relative z-10">
+                                {/* Rating Cards Grid */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    {/* Product Rating Card */}
+                                    <div className="bg-white p-3 rounded-xl border border-amber-100 shadow-sm">
+                                        <div className="flex flex-col items-center text-center mb-2">
+                                            <span className="text-xs font-semibold text-slate-700 mb-1">{t('rating.product_satisfaction') || 'Product'}</span>
+                                            <span className="font-bold text-slate-900 text-lg">{request.rating.product_rating}<span className="text-slate-400 text-[10px] font-normal">/5</span></span>
+                                        </div>
+                                        <div className="w-full bg-slate-100 rounded-full h-1.5">
+                                            <div
+                                                className="bg-gradient-to-r from-amber-400 to-amber-500 h-1.5 rounded-full"
+                                                style={{ width: `${(request.rating.product_rating / 5) * 100}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+
+                                    {/* Service Rating Card */}
+                                    <div className="bg-white p-3 rounded-xl border border-green-100 shadow-sm">
+                                        <div className="flex flex-col items-center text-center mb-2">
+                                            <span className="text-xs font-semibold text-slate-700 mb-1">{t('rating.service_satisfaction') || 'Service'}</span>
+                                            <span className="font-bold text-slate-900 text-lg">{request.rating.service_rating}<span className="text-slate-400 text-[10px] font-normal">/5</span></span>
+                                        </div>
+                                        <div className="w-full bg-slate-100 rounded-full h-1.5">
+                                            <div
+                                                className="bg-gradient-to-r from-green-400 to-green-500 h-1.5 rounded-full"
+                                                style={{ width: `${(request.rating.service_rating / 5) * 100}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* How Found Us & Notes Row */}
+                                <div className="bg-white/60 p-3 rounded-xl border border-slate-200/60 space-y-2">
+                                    <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-100">
+                                        <span className="text-slate-500">{t('rating.how_found_us') || 'Source'}:</span>
+                                        <span className="font-medium text-slate-900 capitalize bg-white px-2 py-0.5 rounded border border-slate-200">
+                                            {request.rating.how_found_us}
+                                        </span>
+                                    </div>
+
+                                    {/* Customer Notes */}
+                                    {request.rating.customer_notes && (
+                                        <div>
+                                            <div className="text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">{t('rating.customer_feedback') || 'Feedback'}</div>
+                                            <p className="text-slate-700 italic text-xs leading-relaxed line-clamp-3">"{request.rating.customer_notes}"</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Image (Collapsible or Compact) */}
+                                {request.rating.image_url && (
+                                    <div className="mt-3">
+                                        <div className="text-[10px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">{t('rating.rating_image') || 'Attached Image'}</div>
+                                        <div className="rounded-xl overflow-hidden border border-slate-200 shadow-sm h-32 relative group">
+                                            <img
+                                                src={request.rating.image_url}
+                                                alt="Rating"
+                                                className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
+                                                onClick={() => window.open(request.rating.image_url, '_blank')}
+                                            />
+                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                <span className="bg-black/50 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">Click to View</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Footer Action - Compact */}
+                        <div className="p-3 bg-slate-50 border-t border-slate-100 text-center">
+                            <button
+                                onClick={() => setRateModal(false)}
+                                className="text-slate-500 hover:text-slate-800 text-xs font-medium transition-colors"
+                            >
+                                {t('common.close') || 'Close'}
+                            </button>
                         </div>
                     </div>
                 </div>
