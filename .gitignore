@@ -24,3 +24,5 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /dashboard/node_modules
+/dashboard/firebase_import_locations_node.json
+/dashboard/firebase_import_root.json

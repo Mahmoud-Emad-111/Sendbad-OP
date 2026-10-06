@@ -1,29 +1,227 @@
-# Sindbad Field Service Management Platform
+# Sindbad — منصة خدمات الحقل
 
-Sindbad is a field-service management platform built around Laravel and a React administration dashboard. It connects service operations with Odoo ERP data, helping teams manage customer service requests while referencing customer, order, invoice, product, and task information from Odoo.
+Sindbad هي منصة متكاملة لإدارة خدمات الحقل، مبنية على Laravel وReact، وتتيح للفرق التشغيلية متابعة الطلبات، تعيين الفنيين، تتبع الموقع، ومتابعة حالة التنفيذ من لوحة واحدة.
 
-> **Odoo integration:** The application includes an Odoo JSON-RPC integration layer. Live Odoo features require valid Odoo access, network connectivity, and the appropriate permissions. Configure the credentials for your environment before relying on ERP-backed workflows.
+## المميزات
 
-## Platform at a glance
+- **إدارة الطلبات**: إنشاء طلبات الخدمة والتركيب، متابعة حالتها، تغييرها، وإجراء التحديثات من لوحة الإدارة.
+- **إدارة الفنيين**: تعيين الفنيين على الطلبات، عرض المواعيد، والمعرفة من خلال خريطة الموقع.
+- **تتبع فنيي الحقل**: عرض مواقع الفنيين المباشرة باستخدام Firebase وReact Leaflet.
+- **تكامل ERP**: ربط البيانات مع Odoo لاسترداد العملاء، الطلبات، الفواتير، المنتجات، والمهام.
+- **التقييم والوثائق**: جمع تقييم العميل، التوقيع، صور الطلب، وصور الفنيين.
+- **التنبيهات**: إرسال إشعارات عبر Firebase وPush notifications للعميل والفني.
+- **لوحة تحكم حديثة**: واجهة React وTypeScript قابلة للتخصيص، مع دعم اللغة العربية والإنجليزية.
+- **واجهة API Laravel**: إدارة المصادقة، الطلبات، المستخدمين، الأنشطة، والتقارير من خلال API موحد.
+- **التحقق المستمر**: CI يحاكي البناء والاختبارات وتحقق الجودة لكل تغيير.
 
-- **Laravel 12 API** for authentication, customer profiles, service requests, installation requests, technician assignments, notifications, and administration.
-- **React and TypeScript dashboard** for administrative and operational workflows.
-- **Odoo ERP integration** for customer lookup and linked customer records, sales orders, invoices, financial information, task readiness, and product data.
-- **Live technician tracking** with Firebase and map-based dashboard views.
-- **Automated CI** with GitHub Actions for Laravel tests and frontend production builds.
+## التقنيات المستخدمة
 
-## Odoo integration
+- Laravel 12
+- PHP 8.4
+- MySQL 8.4
+- React 19 وTypeScript
+- Vite
+- Docker وDocker Compose
+- Odoo JSON-RPC
+- Firebase Cloud Messaging
+- Pest PHP
 
-The backend includes an Odoo integration service using JSON-RPC. Its current capabilities include:
+## هيكل المشروع
 
-- Finding Odoo customers by phone number or name and associating application users with their Odoo customer ID.
-- Retrieving customer sales orders, invoices, debt information, and tasks.
-- Checking task readiness and financial eligibility through dedicated middleware components.
-- Returning Odoo products through the authenticated admin API route `GET /api/admin/odoo/products`.
+| المسار | الوصف |
+| --- | --- |
+| `app/` | تطبيق Laravel، Controllers، Models، Services، Jobs، Middleware |
+| `routes/` | مسارات API، الواجهة، وإدارة النظام |
+| `database/` | Migrations، Seeders، Factories |
+| `config/` | إعدادات Laravel وOdoo وFirebase والـ Queue |
+| `dashboard/` | تطبيق React وTypeScript للوحة الإدارة |
+| `tests/` | اختبارات Laravel باستخدام Pest |
+| `Docker/` | ملفات Docker وNginx |
+| `.github/workflows/` | GitHub Actions |
 
-Financial-eligibility and task-readiness middleware are available in the backend; verify that the relevant middleware is enabled on the specific routes in your deployment before treating those checks as active request policies.
+## المتطلبات
 
-Configure the connection in the Laravel environment:
+- Docker Desktop 4+ أو Docker Engine
+- Docker Compose
+- Git
+- PHP 8.4 محليًا عند تشغيل المشروع بدون Docker
+- Composer 2
+- Node.js 24 وnpm
+
+## التشغيل باستخدام Docker Compose
+
+### 1. إنشاء ملف البيئة
+
+من مجلد المشروع، انسخ ملف البيئة مثالًا:
+
+```bash
+cp .env.example .env
+```
+
+حرر ملف `.env` وأدخل بيانات قاعدة البيانات المناسبة:
+
+```dotenv
+DB_DATABASE=backend
+DB_USERNAME=backend
+DB_PASSWORD=change_this_password
+DB_ROOT_PASSWORD=change_this_root_password
+```
+
+يمكنك أيضًا تغيير اسم التطبيق وعنوان URL:
+
+```dotenv
+APP_NAME=Sindbad
+APP_URL=http://localhost
+```
+
+> لا تضع بيانات حقيقية أو مفاتيح حساسة في Git. استخدم متغيرات بيئة التشغيل الخاصة بالخادم في البيئات الإنتاجية.
+
+### 2. بناء وتشغيل الخدمات
+
+للتشغيل في وضع الإنتاج، استخدم ملف Compose الإنتاجي:
+
+```bash
+docker compose -f compose.prod.yml up --build -d
+```
+
+للتشغيل في وضع التطوير، استخدم:
+
+```bash
+docker compose up --build -d
+```
+
+بعد اكتمال البناء، تحقق من حالة الخدمات:
+
+```bash
+docker compose -f compose.prod.yml ps
+```
+
+عرض سجلات Laravel:
+
+```bash
+docker compose logs -f laravel
+```
+
+عرض سجلات كل الخدمات:
+
+```bash
+docker compose logs -f
+```
+
+### 3. إعداد Laravel الأولي
+
+شغل الأوامر التالية بعد أن يبدأ MySQL:
+
+```bash
+docker compose exec laravel php artisan key:generate
+docker compose exec laravel php artisan migrate --force
+docker compose exec laravel php artisan storage:link
+```
+
+إذا أردت تعبئة البيانات التجريبية:
+
+```bash
+docker compose exec laravel php artisan db:seed
+```
+
+### 4. الوصول إلى التطبيق
+
+- لوحة الإدارة: http://localhost
+- لوحة phpMyAdmin: http://localhost:8080
+- واجهة Laravel API: http://localhost/api
+- Vite Dashboard في وضع التطوير: http://localhost:5173
+
+### 5. إيقاف الخدمات
+
+```bash
+docker compose down
+```
+
+لحذف بيانات قاعدة البيانات المحلية:
+
+```bash
+docker compose down -v
+```
+
+> استخدم خيار `-v` بحذر، لأنه يحذف قاعدة البيانات بالكامل.
+
+## التشغيل المحلي بدون Docker
+
+### إعداد Laravel
+
+```bash
+cp .env.example .env
+composer install
+php artisan key:generate
+php artisan migrate --force
+php artisan storage:link
+```
+
+قم بتشغيل الواجهة الخلفية:
+
+```bash
+php artisan serve
+```
+
+تشغيل Queue Worker في Terminal منفصل:
+
+```bash
+php artisan queue:work
+```
+
+تشغيل Laravel وVite وQueue Worker معًا:
+
+```bash
+composer run dev
+```
+
+### إعداد Dashboard
+
+```bash
+cd dashboard
+npm ci
+```
+
+أنشئ ملف `dashboard/.env` إذا أردت تجاوز عنوان API الافتراضي:
+
+```dotenv
+VITE_API_BASE_URL=http://127.0.0.1:8000/api
+VITE_GOOGLE_MAPS_API_KEY=
+```
+
+شغّل لوحة التطوير:
+
+```bash
+npm run dev
+```
+
+لبناء نسخة الإنتاج:
+
+```bash
+npm run build
+npm run lint
+```
+
+## اختبارات المشروع
+
+### Laravel
+
+```bash
+php artisan test
+```
+
+### Dashboard
+
+```bash
+cd dashboard
+npm ci
+npm run lint
+npm run build
+```
+
+## إعدادات Odoo وFirebase
+
+### Odoo
 
 ```dotenv
 ODOO_URL=https://your-company.odoo.com
@@ -32,121 +230,31 @@ ODOO_USERNAME=your-integration-user
 ODOO_PASSWORD=your-integration-password
 ```
 
-Use an Odoo integration account with only the permissions needed by the enabled features. Keep credentials in the deployment platform's secret manager or an untracked local `.env` file; never commit real credentials. Odoo availability, database name, access rights, and model fields depend on the target Odoo instance and its configuration.
+مطلوب اتصال فعلي وتفويضات مناسبة لاستخدام ميزات Odoo. لا تضع بيانات الاعتماد داخل Git.
 
-## Repository structure
+### Firebase
 
-| Path | Purpose |
-| --- | --- |
-| `app/` and `routes/` | Laravel application, API controllers, services, middleware, and routes |
-| `app/Services/Odoo/` | Odoo integration interface and JSON-RPC service |
-| `config/` | Application configuration, including Odoo settings |
-| `database/` | Database migrations, factories, and seeders |
-| `resources/` | Laravel frontend assets built with Vite |
-| `dashboard/` | React and TypeScript administration dashboard |
-| `tests/` | Laravel tests using Pest |
-| `.github/workflows/ci.yml` | GitHub Actions continuous integration workflow |
+أضف ملف Firebase service-account أو البيانات اللازمة إلى مسار التخزين الذي تستخدمه الخدمة، ثم جهّز مسار الملف داخل إعدادات التطبيق.
 
-## Requirements
+## CI
 
-- PHP 8.2 or newer and Composer 2
-- Node.js 22 and npm
-- MySQL for a typical local or production backend deployment
-- SQLite support for the in-memory test database
-- Access to an Odoo instance for Odoo-backed features
+يتم تشغيل GitHub Actions لكل push وpull request. يتضمن workflow الأساسي:
 
-## Local development
+- التحقق من Composer
+- تثبيت اعتماديات Laravel
+- تشغيل اختبارات PHP
+- بناء ملفات frontend
 
-### Laravel API
+ويتضمن أيضًا workflow الخاص بـ dashboard:
 
-Create a MySQL database, then run these commands from the repository root:
+- تثبيت npm
+- فحص ESLint
+- TypeScript build
+- Production build
 
-```bash
-cp .env.example .env
-composer install
-php artisan key:generate
-```
+## الملاحظات الأمنية
 
-Update the database settings in `.env` (`DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD`). Add the Odoo settings above if you want to use the Odoo-backed features. Then run:
-
-```bash
-php artisan migrate
-php artisan storage:link
-npm ci
-npm run build
-php artisan serve
-```
-
-Run a queue worker in a separate terminal when processing background jobs:
-
-```bash
-php artisan queue:work
-```
-
-For the combined Laravel server, queue worker, and Vite development server, use:
-
-```bash
-composer run dev
-```
-
-### React dashboard
-
-In another terminal:
-
-```bash
-cd dashboard
-npm ci
-```
-
-Create `dashboard/.env` and configure the API URL. Add a Google Maps key if the map features in your environment require one:
-
-```dotenv
-VITE_API_BASE_URL=http://127.0.0.1:8000/api
-VITE_GOOGLE_MAPS_API_KEY=
-```
-
-Start the dashboard development server:
-
-```bash
-npm run dev
-```
-
-Vite prints the local URL in the terminal. Run `npm run build` in `dashboard/` to create production assets. Run `npm run lint` to check the dashboard source; existing lint findings may need to be resolved before using lint as a CI gate.
-
-## Testing and CI
-
-Run the Laravel test suite from the repository root:
-
-```bash
-php artisan test
-```
-
-Build the Laravel frontend assets:
-
-```bash
-npm ci
-npm run build
-```
-
-Build the dashboard:
-
-```bash
-cd dashboard
-npm ci
-npm run build
-```
-
-GitHub Actions runs Laravel tests and builds both frontend applications for each push and pull request. The workflow can also be started manually from the repository's **Actions** tab. Laravel tests use an in-memory SQLite database and do not require live Odoo or Firebase credentials.
-
-## Configuration and secrets
-
-- Keep `.env`, `dashboard/.env`, Odoo passwords, Firebase service-account files, and other credentials out of source control.
-- Use `.env.example` as the Laravel environment template, and configure Odoo credentials separately for each environment.
-- Set `VITE_API_BASE_URL` in `dashboard/.env` to the API for the target environment.
-- Set `VITE_GOOGLE_MAPS_API_KEY` when Google Maps features require it.
-- Server-side Firebase notifications require valid credentials at `storage/app/firebase_credentials.json`.
-- The CI workflow validates and builds the project; it does not publish or deploy it. Configure deployment separately for your hosting platform.
-
-## Docker
-
-The root `.dockerignore` excludes local dependencies, generated files, environment files, and private credentials from a Docker build context. It helps keep the context lean and reduces the risk of including local secrets. This repository does not currently include a `Dockerfile` or a container deployment configuration.
+- لا تضع ملفات `.env` أو مفاتيح API داخل Git.
+- لا تضع بيانات تسجيل الدخول إلى Odoo أو Firebase في إعدادات المشروع.
+- استخدم حسابات ومفاتيح ذات صلاحيات محدودة في الإنتاج.
+- لا تشغّل `docker compose down -v` إلا إذا كنت متأكدًا أنك تريد حذف البيانات المحلية.
