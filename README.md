@@ -1,59 +1,152 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Sindbad Field Service Management Platform
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sindbad is a field-service management platform built around Laravel and a React administration dashboard. It connects service operations with Odoo ERP data, helping teams manage customer service requests while referencing customer, order, invoice, product, and task information from Odoo.
 
-## About Laravel
+> **Odoo integration:** The application includes an Odoo JSON-RPC integration layer. Live Odoo features require valid Odoo access, network connectivity, and the appropriate permissions. Configure the credentials for your environment before relying on ERP-backed workflows.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Platform at a glance
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **Laravel 12 API** for authentication, customer profiles, service requests, installation requests, technician assignments, notifications, and administration.
+- **React and TypeScript dashboard** for administrative and operational workflows.
+- **Odoo ERP integration** for customer lookup and linked customer records, sales orders, invoices, financial information, task readiness, and product data.
+- **Live technician tracking** with Firebase and map-based dashboard views.
+- **Automated CI** with GitHub Actions for Laravel tests and frontend production builds.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Odoo integration
 
-## Learning Laravel
+The backend includes an Odoo integration service using JSON-RPC. Its current capabilities include:
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+- Finding Odoo customers by phone number or name and associating application users with their Odoo customer ID.
+- Retrieving customer sales orders, invoices, debt information, and tasks.
+- Checking task readiness and financial eligibility through dedicated middleware components.
+- Returning Odoo products through the authenticated admin API route `GET /api/admin/odoo/products`.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Financial-eligibility and task-readiness middleware are available in the backend; verify that the relevant middleware is enabled on the specific routes in your deployment before treating those checks as active request policies.
 
-## Laravel Sponsors
+Configure the connection in the Laravel environment:
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```dotenv
+ODOO_URL=https://your-company.odoo.com
+ODOO_DB=your_odoo_database
+ODOO_USERNAME=your-integration-user
+ODOO_PASSWORD=your-integration-password
+```
 
-### Premium Partners
+Use an Odoo integration account with only the permissions needed by the enabled features. Keep credentials in the deployment platform's secret manager or an untracked local `.env` file; never commit real credentials. Odoo availability, database name, access rights, and model fields depend on the target Odoo instance and its configuration.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Repository structure
 
-## Contributing
+| Path | Purpose |
+| --- | --- |
+| `app/` and `routes/` | Laravel application, API controllers, services, middleware, and routes |
+| `app/Services/Odoo/` | Odoo integration interface and JSON-RPC service |
+| `config/` | Application configuration, including Odoo settings |
+| `database/` | Database migrations, factories, and seeders |
+| `resources/` | Laravel frontend assets built with Vite |
+| `dashboard/` | React and TypeScript administration dashboard |
+| `tests/` | Laravel tests using Pest |
+| `.github/workflows/ci.yml` | GitHub Actions continuous integration workflow |
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Requirements
 
-## Code of Conduct
+- PHP 8.2 or newer and Composer 2
+- Node.js 22 and npm
+- MySQL for a typical local or production backend deployment
+- SQLite support for the in-memory test database
+- Access to an Odoo instance for Odoo-backed features
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Local development
 
-## Security Vulnerabilities
+### Laravel API
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Create a MySQL database, then run these commands from the repository root:
 
-## License
+```bash
+cp .env.example .env
+composer install
+php artisan key:generate
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Update the database settings in `.env` (`DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD`). Add the Odoo settings above if you want to use the Odoo-backed features. Then run:
+
+```bash
+php artisan migrate
+php artisan storage:link
+npm ci
+npm run build
+php artisan serve
+```
+
+Run a queue worker in a separate terminal when processing background jobs:
+
+```bash
+php artisan queue:work
+```
+
+For the combined Laravel server, queue worker, and Vite development server, use:
+
+```bash
+composer run dev
+```
+
+### React dashboard
+
+In another terminal:
+
+```bash
+cd dashboard
+npm ci
+```
+
+Create `dashboard/.env` and configure the API URL. Add a Google Maps key if the map features in your environment require one:
+
+```dotenv
+VITE_API_BASE_URL=http://127.0.0.1:8000/api
+VITE_GOOGLE_MAPS_API_KEY=
+```
+
+Start the dashboard development server:
+
+```bash
+npm run dev
+```
+
+Vite prints the local URL in the terminal. Run `npm run build` in `dashboard/` to create production assets. Run `npm run lint` to check the dashboard source; existing lint findings may need to be resolved before using lint as a CI gate.
+
+## Testing and CI
+
+Run the Laravel test suite from the repository root:
+
+```bash
+php artisan test
+```
+
+Build the Laravel frontend assets:
+
+```bash
+npm ci
+npm run build
+```
+
+Build the dashboard:
+
+```bash
+cd dashboard
+npm ci
+npm run build
+```
+
+GitHub Actions runs Laravel tests and builds both frontend applications for each push and pull request. The workflow can also be started manually from the repository's **Actions** tab. Laravel tests use an in-memory SQLite database and do not require live Odoo or Firebase credentials.
+
+## Configuration and secrets
+
+- Keep `.env`, `dashboard/.env`, Odoo passwords, Firebase service-account files, and other credentials out of source control.
+- Use `.env.example` as the Laravel environment template, and configure Odoo credentials separately for each environment.
+- Set `VITE_API_BASE_URL` in `dashboard/.env` to the API for the target environment.
+- Set `VITE_GOOGLE_MAPS_API_KEY` when Google Maps features require it.
+- Server-side Firebase notifications require valid credentials at `storage/app/firebase_credentials.json`.
+- The CI workflow validates and builds the project; it does not publish or deploy it. Configure deployment separately for your hosting platform.
+
+## Docker
+
+The root `.dockerignore` excludes local dependencies, generated files, environment files, and private credentials from a Docker build context. It helps keep the context lean and reduces the risk of including local secrets. This repository does not currently include a `Dockerfile` or a container deployment configuration.

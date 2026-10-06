@@ -1,0 +1,84 @@
+services:
+  laravel:
+    build:
+      context: .
+      dockerfile: Docker/php/Dockerfile
+      target: development
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      - mysql
+    networks:
+      - laravel
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u${DB_USERNAME}",
+          "-p${DB_PASSWORD}"
+      ]
+
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - laravel
+  nginx:
+    build:
+      context: .
+      dockerfile: Docker/Nginx/Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./public:/var/www/html/public
+      - ./storage/app/public:/var/www/html/public/storage
+    depends_on:
+      - laravel
+    networks:
+      - laravel
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: ${DB_USERNAME}
+      PMA_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql
+    networks:
+      - laravel
+  frontend:
+    build:
+      context: .
+      dockerfile: Docker/frontend/Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./dashboard:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - nginx
+volumes:
+  mysql_data:
+
+networks:
+  laravel:

@@ -1,0 +1,51 @@
+services:
+  laravel:
+    build:
+      context: .
+      dockerfile: Docker/php/Dockerfile
+      target: production
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      DB_HOST: mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - laravel
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-${DB_PASSWORD}}
+    volumes:
+      - mysql_data_prod:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${DB_USERNAME}", "-p${DB_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - laravel
+
+  nginx:
+    build:
+      context: .
+      dockerfile: Docker/Nginx/Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - laravel
+    networks:
+      - laravel
+
+volumes:
+  mysql_data_prod:
+
+networks:
+  laravel:

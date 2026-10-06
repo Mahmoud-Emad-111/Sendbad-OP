@@ -17,8 +17,10 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             AdminSeeder::class,
-            // ServiceRequestSeeder::class,
-            // InstallationRequestSeeder::class,
+            ServiceRequestSeeder::class,
+            InstallationRequestSeeder::class,
+            DemoDataSeeder::class,
+
         ]);
     }
 }
